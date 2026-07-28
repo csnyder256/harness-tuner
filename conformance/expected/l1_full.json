@@ -1,0 +1,149 @@
+{
+  "metrics": {
+    "autonomy_ratio": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 1.0
+    },
+    "cache_hit_ratio": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 0.586957
+    },
+    "context_growth_per_step": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tokens/step",
+      "value": 312.5
+    },
+    "context_peak": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tokens",
+      "value": 2600
+    },
+    "cost_usd": {
+      "reason": null,
+      "status": "measured",
+      "unit": "usd",
+      "value": 0.0111
+    },
+    "distinct_tools": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tools",
+      "value": 3
+    },
+    "error_count": {
+      "reason": null,
+      "status": "measured",
+      "unit": "steps",
+      "value": 0
+    },
+    "error_rate": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 0.0
+    },
+    "human_input_steps": {
+      "reason": null,
+      "status": "measured",
+      "unit": "steps",
+      "value": 0
+    },
+    "loop_max_run": {
+      "reason": null,
+      "status": "measured",
+      "unit": "calls",
+      "value": 1
+    },
+    "recovery_rate": {
+      "reason": "no error occurred, so a recovery rate is undefined",
+      "status": "unavailable",
+      "unit": "ratio",
+      "value": null
+    },
+    "redundant_call_count": {
+      "reason": null,
+      "status": "measured",
+      "unit": "calls",
+      "value": 0
+    },
+    "redundant_call_ratio": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 0.0
+    },
+    "rework_ratio": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 0.0
+    },
+    "step_count": {
+      "reason": null,
+      "status": "measured",
+      "unit": "steps",
+      "value": 6
+    },
+    "step_efficiency": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 1.0
+    },
+    "task_success": {
+      "reason": null,
+      "status": "measured",
+      "unit": "bool",
+      "value": true
+    },
+    "time_to_first_action_ms": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ms",
+      "value": 0
+    },
+    "tokens_cache_read": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tokens",
+      "value": 2700
+    },
+    "tokens_cache_write": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tokens",
+      "value": 1200
+    },
+    "tokens_input": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tokens",
+      "value": 1900
+    },
+    "tokens_output": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tokens",
+      "value": 440
+    },
+    "tool_call_count": {
+      "reason": null,
+      "status": "measured",
+      "unit": "calls",
+      "value": 3
+    },
+    "wall_ms": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ms",
+      "value": 2595
+    }
+  },
+  "name": "l1_full"
+}

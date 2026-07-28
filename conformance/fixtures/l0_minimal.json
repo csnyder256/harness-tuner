@@ -1,0 +1,11 @@
+{
+  "name": "l0_minimal",
+  "description": "A level L0 adapter. Plain text logs yielded tool names and their order and nothing else: no arguments, no tokens, no timings, no outcomes. Every metric that needs data this harness does not expose must report unavailable with a reason. This fixture exists to prove the engine never substitutes zero for unobserved.",
+  "task": {},
+  "trace": [
+    {"kind": "tool_call", "tool": "search"},
+    {"kind": "tool_call", "tool": "read_file"},
+    {"kind": "tool_call", "tool": "edit_file"},
+    {"kind": "tool_call", "tool": "run_tests"}
+  ]
+}

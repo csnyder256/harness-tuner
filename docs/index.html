@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>harness-tuner &middot; measure your agent harness, then prove the fix worked</title>
+<meta name="description" content="Harness-agnostic, agent-agnostic evaluation and improvement for AI agent harnesses. Measures where a harness wastes the model, proposes changes, and proves whether they helped using anytime-valid e-processes. Reference implementation of HTP-1. MIT.">
+<link rel="canonical" href="https://csnyder256.github.io/harness-tuner/">
+<meta property="og:title" content="harness-tuner">
+<meta property="og:description" content="Measure your agent harness. Find where it wastes the model. Prove the fix worked.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://csnyder256.github.io/harness-tuner/">
+<meta property="og:image" content="https://raw.githubusercontent.com/csnyder256/harness-tuner/main/images/architecture.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root{color-scheme:light dark;
+    --fg:#16181d;--bg:#fff;--muted:#5b6270;--line:#e3e6ec;--card:#f8f9fb;
+    --accent:#4553a8;--accent-bg:#eef2ff;--warn:#a8641a;--warn-bg:#fff4e6;
+    --ok:#2f7048;--ok-bg:#eaf7ef;}
+  @media (prefers-color-scheme:dark){:root{
+    --fg:#e6e8ee;--bg:#14161a;--muted:#98a0b0;--line:#2a2e37;--card:#1b1e24;
+    --accent:#9aa8ee;--accent-bg:#1d2133;--warn:#e8b25e;--warn-bg:#2c2416;
+    --ok:#6fd39b;--ok-bg:#16261d;}}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);
+    font:16px/1.65 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  main{max-width:62rem;margin:0 auto;padding:3.5rem 1.25rem 5rem}
+  h1{font-size:2.6rem;letter-spacing:-.03em;font-weight:680;line-height:1.1}
+  .tag{font-size:1.2rem;color:var(--muted);margin-top:.7rem;max-width:44rem}
+  h2{font-size:1.35rem;margin:3.25rem 0 .9rem;letter-spacing:-.015em;
+    padding-bottom:.45rem;border-bottom:1px solid var(--line)}
+  h3{font-size:1.05rem;margin:1.75rem 0 .4rem}
+  p{margin:.75rem 0;max-width:52rem}
+  a{color:var(--accent)}
+  .badges{margin:1.5rem 0 .5rem;display:flex;flex-wrap:wrap;gap:.4rem}
+  .badges img{height:20px}
+  .cta{display:flex;flex-wrap:wrap;gap:.6rem;margin:1.6rem 0 .5rem}
+  .cta a{display:inline-block;padding:.55rem 1.05rem;border-radius:7px;
+    text-decoration:none;font-weight:600;font-size:.95rem;border:1.5px solid var(--line)}
+  .cta a.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  figure{margin:2rem 0}
+  figure img{width:100%;max-width:100%;border:1px solid var(--line);border-radius:9px;display:block}
+  figcaption{font-size:.85rem;color:var(--muted);margin-top:.5rem;text-align:center}
+  pre{background:var(--card);border:1px solid var(--line);border-radius:8px;
+    padding:.9rem 1rem;overflow-x:auto;font-size:.85rem;line-height:1.6;margin:1rem 0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em}
+  .wrap{overflow-x:auto;margin:1rem 0}
+  table{border-collapse:collapse;width:100%;font-size:.92rem;min-width:34rem}
+  th,td{text-align:left;padding:.55rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:.76rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:640}
+  .claim{border:1.5px solid var(--line);border-radius:10px;padding:1.1rem 1.3rem;margin:1.1rem 0;background:var(--card)}
+  .claim h3{margin-top:0;color:var(--accent)}
+  .claim .bad{color:var(--warn);font-weight:620}
+  .claim .good{color:var(--ok);font-weight:620}
+  .nots{border-left:3px solid var(--warn);padding-left:1.1rem;margin:1.1rem 0}
+  .nots h3{margin-top:1.1rem}
+  .nots h3:first-child{margin-top:0}
+  ul{margin:.6rem 0 .6rem 1.2rem}
+  li{margin:.3rem 0;max-width:50rem}
+  .rungs{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.9rem;margin:1.2rem 0}
+  .rung{border:1.5px solid var(--line);border-radius:9px;padding:.9rem 1.05rem;background:var(--card)}
+  .rung .n{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700}
+  .rung h3{margin:.25rem 0 .3rem;font-size:1rem}
+  .rung p{font-size:.87rem;color:var(--muted);margin:.2rem 0}
+  footer{margin-top:4rem;padding-top:1.4rem;border-top:1px solid var(--line);
+    font-size:.87rem;color:var(--muted)}
+  .faq dt{font-weight:640;margin-top:1.1rem}
+  .faq dd{margin:.3rem 0 0;color:var(--muted);max-width:52rem}
+</style>
+</head>
+<body>
+<main>
+
+  <h1>harness-tuner</h1>
+  <p class="tag">Measure your agent harness. Find where it wastes the model. Prove the fix worked.</p>
+  <p class="tag" style="font-size:1rem">Harness agnostic, agent agnostic, machine agnostic. Set it up by saying one sentence to your coding agent.</p>
+
+  <div class="badges">
+    <a href="https://github.com/csnyder256/harness-tuner/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/csnyder256/harness-tuner/actions/workflows/ci.yml/badge.svg"></a>
+    <img alt="MIT" src="https://img.shields.io/badge/license-MIT-blue.svg">
+    <img alt="HTP-1" src="https://img.shields.io/badge/protocol-HTP--1-8957e5.svg">
+    <img alt="zero dependencies" src="https://img.shields.io/badge/python-3.11%2B%20%C2%B7%20zero%20deps-3776ab.svg">
+    <a href="https://github.com/csnyder256/harness-tuner/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/csnyder256/harness-tuner?style=social"></a>
+  </div>
+
+  <div class="cta">
+    <a class="primary" href="https://github.com/csnyder256/harness-tuner">GitHub repository</a>
+    <a href="https://github.com/csnyder256/harness-tuner/blob/main/AGENT-GUIDE.md">Agent guide and HTP-1 spec</a>
+    <a href="https://github.com/csnyder256/harness-tuner/blob/main/CONTRIBUTING.md">Contributing</a>
+  </div>
+
+  <figure>
+    <img src="https://raw.githubusercontent.com/csnyder256/harness-tuner/main/images/architecture.png" alt="harness-tuner sits around a harness it does not own: your harness, an adapter, the engine, and eight fixed artifacts">
+    <figcaption>The adapter is the only harness-specific part, and an agent writes it from the guide.</figcaption>
+  </figure>
+
+  <h2>What it does</h2>
+  <p>Your agent harness is the scaffolding around the model: the system prompt, the tool set and how the tools are described, the memory and context policy, the hooks, the retries, the compaction. Most of the difference between a harness that feels sharp and one that feels expensive lives there, and almost none of it is measured.</p>
+  <p>harness-tuner measures it. It reads traces from any harness through a small adapter, computes a fixed set of operational metrics, tells you where the harness is spending the model's capability on nothing, and writes proposals you can apply. Then it does the part nobody else does: it tells you, with a real statistical guarantee, whether the change you applied actually helped.</p>
+  <p>It never edits your harness. It proposes; you decide.</p>
+
+  <h2>Install: pick a rung</h2>
+  <p>Work down this list and stop at the first that fits your machine. Machine agnostic needs more than one answer, because a laptop, a locked-down build box and a CI runner are genuinely different problems.</p>
+
+  <div class="rungs">
+    <div class="rung">
+      <div class="n">rung one</div><h3>Container</h3>
+      <p>Needs no runtime at all. The conformance suite runs at image build time, so a broken image is never published.</p>
+    </div>
+    <div class="rung">
+      <div class="n">rung two</div><h3>Reference implementation</h3>
+      <p>Python 3.11 or newer, standard library only. No install step, no dependencies, no build.</p>
+    </div>
+    <div class="rung">
+      <div class="n">rung three</div><h3>Reimplement, then prove it</h3>
+      <p>Implement the protocol in whatever your machine has, then pass the shipped conformance fixtures. Tested, not trusted.</p>
+    </div>
+  </div>
+
+<pre><code>docker run --rm -v "$PWD:/work" -w /work ghcr.io/csnyder256/harness-tuner:latest doctor</code></pre>
+
+  <p>Then copy <code>AGENT-GUIDE.md</code> into your project and tell your coding agent:</p>
+<pre><code>Follow the agent protocol, and set this up for our harness.</code></pre>
+  <p>It reads your harness, works out what it can and cannot see, asks you the questions only you can answer, and writes the adapter. There is no SDK to learn and no integration to maintain.</p>
+
+  <h2>The loop</h2>
+  <figure>
+    <img src="https://raw.githubusercontent.com/csnyder256/harness-tuner/main/images/loop.png" alt="Measure, diagnose, apply, verify. Step four reports confirmed, refuted or unproven.">
+    <figcaption>Step four is the reason the other three are worth doing.</figcaption>
+  </figure>
+
+  <h2>Three claims, and what keeps each one honest</h2>
+  <p>Every evaluation tool makes these claims. The interesting question is what stops each from quietly becoming false, because all three fail silently and none of them fails loudly.</p>
+
+  <div class="claim">
+    <h3>1. It measures your harness</h3>
+    <p><span class="bad">How that goes wrong:</span> a metric the adapter could not observe gets reported as zero. A harness whose adapter cannot see caching then looks identical to one that genuinely caches nothing, and the tool has invented a finding out of a gap in its own instrumentation.</p>
+    <p><span class="good">What prevents it:</span> a value that could not be observed is null, and null becomes unavailable carrying a reason you can act on. Never zero, never an estimate. A metric that is undefined rather than merely unobserved also says which, so a recovery rate over zero errors reports undefined instead of a perfect score. The report leads with what could not be measured, and <code>doctor</code> is a whole command devoted to listing what your install cannot do.</p>
+  </div>
+
+  <div class="claim">
+    <h3>2. It tells you what to change</h3>
+    <p><span class="bad">How that goes wrong:</span> a model is handed a trace and asked to find problems. It finds problems. It would find problems in any trace, and none of them come with a step number.</p>
+    <p><span class="good">What prevents it:</span> detection is arithmetic, not judgement. Every finding is produced by counting things in the trace and carries the exact steps it came from. Proposals carry a bound computed from what happened, not a forecast: at most nine of these reads were avoidable, because each had already been performed earlier in the same task.</p>
+  </div>
+
+  <div class="claim">
+    <h3>3. It proves the change helped</h3>
+    <p><span class="bad">How that goes wrong:</span> you run the harness twice, the second number is better, and you believe it. Agent runs are noisy enough that this is close to a coin flip. The usual fix is a fixed sample size and a p-value computed once at the end, which fails here because trials cost money and you are going to look at the running result whether or not the method permits it.</p>
+    <p><span class="good">What prevents it:</span> an anytime-valid e-process. Each paired trial is a bet on the variant, and Ville's inequality bounds the probability that the accumulated wealth ever crosses the threshold, at any stopping time, checked as often as you like. <code>verify</code> reports an e-value, never a p-value, and returns confirmed, refuted, or unproven.</p>
+  </div>
+
+  <h2>What it deliberately does not do</h2>
+  <div class="nots">
+    <h3>It publishes no numbers about anybody's harness</h3>
+    <p>There is no leaderboard here and there never will be. Rankings between products go stale within weeks, invite methodology fights, and are almost always run by someone with a stake. Every number this tool produces is produced by you, on your machine, about your harness.</p>
+
+    <h3>It does not apply its own proposals</h3>
+    <p>A tool that can change the thing it measures is a tool that can make its own reports look good.</p>
+
+    <h3>It does not call a model by default</h3>
+    <p>The engine writes a request, your agent answers it with whatever provider and keys you already have, and the engine reads the answer back as a file. No credential store and no vendor SDK to go stale.</p>
+
+    <h3>It does not skip tasks on a guess</h3>
+    <p>A task your harness structurally cannot run is skipped and counted, never scored as a failure. With no capability scan present, nothing is skipped at all, because silently shrinking the task set would inflate every rate computed from it.</p>
+
+    <h3>It has no opinion about your containment</h3>
+    <p>Drive mode executes your harness with its real tool access, so it insists you record what that can reach and approve it. It does not insist on Docker, or a VM, or anything else, because it cannot know what your machine supports.</p>
+  </div>
+
+  <h2>HTP-1</h2>
+  <p>Everything else is negotiated with you at setup. Three things are fixed, and they are what make two runs comparable and a reimplementation checkable.</p>
+
+  <figure>
+    <img src="https://raw.githubusercontent.com/csnyder256/harness-tuner/main/images/protocol.png" alt="What HTP-1 fixes: the trace record, the metric definitions, the artifacts. What it leaves to you: subject, models, containment, cost posture, task set.">
+    <figcaption>Fix too little and nothing compares. Fix too much and it stops being harness agnostic.</figcaption>
+  </figure>
+
+  <h2>How it compares</h2>
+  <div class="wrap">
+  <table>
+    <tr><th></th><th>What it is</th><th>How harness-tuner relates</th></tr>
+    <tr><td><b>Braintrust, Langfuse, LangSmith</b></td><td>Hosted LLM observability and output scoring</td><td>Excellent at tracing and grading what your agent produced. They are products with a control plane; this is a file you copy in that publishes nothing and phones nowhere.</td></tr>
+    <tr><td><b>DeepEval, Promptfoo, Ragas</b></td><td>Open-source scoring libraries for LLM output</td><td>They score answers. This scores the scaffolding: rework, loops, cache behaviour, context growth, recovery. Complementary rather than competing.</td></tr>
+    <tr><td><b>AgentBench, SWE-bench, tau-bench</b></td><td>Academic benchmarks with fixed tasks and leaderboards</td><td>They rank models on shared tasks. This ranks nothing, and generates a task set for what your harness is actually for.</td></tr>
+    <tr><td><b>OpenTelemetry, OpenInference</b></td><td>Tracing conventions for LLM applications</td><td>Genuinely adjacent and a fine source for an adapter to read. They standardize how a span is shaped; HTP-1 standardizes what a harness must expose to be evaluated.</td></tr>
+    <tr><td><b>Your own eval script</b></td><td>The thing most teams actually have</td><td>Usually the right starting point, and usually missing unavailable-versus-zero discipline, a test that survives being watched, and a way to prove a change helped.</td></tr>
+  </table>
+  </div>
+
+  <h2>Questions</h2>
+  <dl class="faq">
+    <dt>Does this work with my harness?</dt>
+    <dd>Yes, and no harness is named in the code. The adapter your agent writes is the only harness-specific part, and its whole job is to emit one JSON file per task. If a harness leaves any record of what it did, down to a plain text log, it can be measured, and the report says exactly what that costs you in metrics.</dd>
+
+    <dt>What if my harness exposes almost nothing?</dt>
+    <dd>Then roughly a third of the metrics report unavailable with a reason each, and <code>doctor</code> tells you before you run anything. Loop detection, step counts and tool-sequence analysis all still work, and those are frequently where the largest recoverable waste is.</dd>
+
+    <dt>Do I have to run real, expensive tasks every time?</dt>
+    <dd>No. Record a driven run once and every later run replays from the cassette, free and byte-deterministically. That is what makes results reproducible by a colleague with no API key, and what makes this practical in CI.</dd>
+
+    <dt>Why an e-value and not a p-value?</dt>
+    <dd>Because you are going to look at the running comparison, and with a p-value looking and then continuing to gather data inflates the error rate silently. An e-process removes the problem instead of asking you not to peek, and it stops early when the answer is obvious.</dd>
+
+    <dt>Is the fingerprint just vibes?</dt>
+    <dd>It is a stated function of measured values, and the scales are published in the artifact next to every score they produced. A dimension whose inputs were all unavailable renders as insufficient evidence rather than falling back to a middle score, and a run with too few tasks renders no scores at all.</dd>
+
+    <dt>Is there a leaderboard?</dt>
+    <dd>No, and there will not be one.</dd>
+  </dl>
+
+  <h2>Related</h2>
+  <p>
+    <a href="https://csnyder256.github.io/RAG-OS/">RAG-OS</a>, a blueprint for a personal always-on AI agent.
+    <a href="https://csnyder256.github.io/org-memory-os/">org-memory-os</a>, one shared permission-aware AI memory for an organization.
+  </p>
+
+  <footer>
+    MIT licensed. Built by <a href="https://csnyder256.github.io/">Cade</a>.
+    <a href="https://github.com/csnyder256/harness-tuner">Source on GitHub</a>.
+    If harness-tuner is useful to you, a <a href="https://github.com/csnyder256/harness-tuner/stargazers">star</a> helps other people find it.
+  </footer>
+
+</main>
+</body>
+</html>

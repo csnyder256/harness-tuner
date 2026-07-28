@@ -1,0 +1,38 @@
+[pack]
+name = "memory"
+version = "1"
+description = """
+Whether the harness remembers what it has already done. These tasks are written
+so that a harness with working memory of prior steps finishes in far fewer
+calls than one without, which makes the difference visible in step counts and
+rework rather than only in task outcome.
+"""
+author = "harness-tuner"
+
+[[task]]
+id = "recall-within-task"
+prompt = "Read NOTES.txt. Later in this same task, without reading it again, tell me what its second line said."
+tags = ["memory"]
+optimal_steps = 1
+requires = ["filesystem"]
+
+[[task]]
+id = "avoid-reread"
+prompt = "Count how many of the files A.txt, B.txt and C.txt mention the word TARGET. Read each file at most once."
+tags = ["memory"]
+optimal_steps = 3
+requires = ["filesystem"]
+
+[[task]]
+id = "carry-a-constraint"
+prompt = "I will give you a rule: never mention the colour blue. Now describe the contents of PALETTE.txt while obeying that rule."
+tags = ["memory", "instruction-following"]
+optimal_steps = 1
+requires = ["filesystem"]
+
+[[task]]
+id = "long-horizon-recall"
+prompt = "Read each of the ten files in the DOCS directory in order, then report which one contained the word KEYSTONE. Do not re-read any file."
+tags = ["memory", "long-horizon"]
+optimal_steps = 10
+requires = ["filesystem"]

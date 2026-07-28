@@ -1,0 +1,36 @@
+# harness-tuner
+
+> A harness-agnostic, agent-agnostic, machine-agnostic tool that measures an AI agent harness, reports where the harness wastes the model's capability, proposes concrete changes, and then proves with an anytime-valid statistical test whether an applied change actually helped. It is the reference implementation of HTP-1, the Harness Tuning Protocol. Setup is performed by the reader's own coding agent: you copy AGENT-GUIDE.md into your project and say "Follow the agent protocol, and set this up for our harness."
+
+harness-tuner evaluates the HARNESS (system prompt, tool set and tool descriptions, memory and context policy, hooks, retries, compaction, subagent routing) rather than only the agent built on it, though the subject under test is chosen at setup and can be the harness, the agent, or both. It is distinct from LLM observability products (Braintrust, Langfuse, LangSmith), from output-scoring libraries (DeepEval, Promptfoo, Ragas), and from academic benchmarks with leaderboards (AgentBench, SWE-bench, tau-bench). It publishes no measurement about any harness or model, and has no leaderboard by design.
+
+The engine is Python 3.11+ and imports only the standard library, enforced in CI. It installs three ways ("rungs"): a container image needing no local runtime, the reference implementation run directly from a clone, or a reimplementation of the protocol in whatever language the machine already has, proven correct against a shipped conformance suite of ten fixtures.
+
+## The three claims and their honesty mechanisms
+
+- A value the adapter could not observe is null, and null becomes an "unavailable" measure carrying an actionable reason. Never zero, never an estimate, never a default. A metric that is undefined rather than merely unobserved also reports unavailable and says which: a recovery rate over zero errors is undefined, not perfect. Reports lead with what could not be measured and with what was measured in only some tasks.
+- Findings are detected deterministically by counting things in traces, and each carries the exact steps it came from. The diagnostician model is explicitly instructed not to add findings of its own. Proposals carry a bound computed from the observed trace, never a numeric forecast.
+- Whether a change helped is decided by an anytime-valid e-process (a mixture betting martingale over a fixed lambda grid, with Ville's inequality). Peeking after every trial does not inflate the error rate. It reports an e-value, never a p-value, and returns one of three verdicts: confirmed, refuted, or unproven.
+
+## Core documents
+- [Agent guide and HTP-1 specification](https://raw.githubusercontent.com/csnyder256/harness-tuner/main/AGENT-GUIDE.md): the setup interview as ASK forks, the normative protocol (trace record, 24 metric definitions, eight artifact names), and the adapter contract. This is the file a user copies into their project.
+- [README](https://raw.githubusercontent.com/csnyder256/harness-tuner/main/README.md): overview, the three-claims structure, what the project deliberately does not do, and a comparison to adjacent tools.
+- [Contributing](https://raw.githubusercontent.com/csnyder256/harness-tuner/main/CONTRIBUTING.md): how to add a metric with a conformance fixture, and the rule that every configuration setting must have a consumer.
+- [Security](https://raw.githubusercontent.com/csnyder256/harness-tuner/main/SECURITY.md): blast radius of drive mode, credential handling, and what ends up in artifacts.
+
+## Key concepts
+- HTP-1 fixes exactly three things: the trace record schema, the metric definitions (including a declared per-metric combiner of sum, max, mean or rate), and the eight artifact filenames (run.json, trace.jsonl, metrics.json, summary.md, report.html, fingerprint.json, manifest.json, capabilities.json). Everything else is negotiated with the user at setup.
+- Adapter conformance levels: L0 observe (any after-the-fact record, down to plain text logs), L1 structured (tokens, timings, outcomes), L2 drivable (a scriptable entry point, required for repeated seeded trials and the verify command), L3 controllable (programmatic config, enabling A/B of a proposed change).
+- Capability discovery is performed by the reader's coding agent reading the harness, not by a probe script, and is recorded with evidence per capability. A task requiring a capability the harness lacks is skipped and counted, never failed. With no capability record present, nothing is skipped.
+- Four model roles are chosen separately at setup: judge, diagnostician, task generator, and the harness's own model. Model calls are delegated by default, meaning the engine writes a request file, the user's agent answers it with their own provider, and the engine reads the answer back. An optional direct-call path exists and is the only module permitted a dependency.
+- Cost controls compose and are chosen at setup: cassette record-and-replay (byte-deterministic, free after the first run), a local model tier, and a hard budget governor that halts a run rather than warning. A halted run still writes all eight artifacts.
+- Containment is mechanism-neutral. Drive mode refuses to execute until containment.approved is set and containment.reach describes what a driven run can touch, and both are stamped into every artifact.
+- Evaluation packs are declarative TOML (read with the standard library tomllib, because Python ships no YAML reader and a YAML pack format would break the zero-dependency promise). Shipped packs: core, coding, memory, safety, org. The real task set is generated for the harness's actual job.
+
+## Topics
+agent harness evaluation, LLM agent evaluation, agent observability, context engineering, prompt caching, cache hit ratio, context compaction, context window management, agent memory evaluation, tool selection, loop detection, rework detection, agent reliability, LLM cost governance, token budgeting, budget governor, cost per task, step efficiency, trace analysis, OpenTelemetry, OpenInference, LLM as judge, deterministic scoring, regression gates, CI for AI agents, prompt injection resilience, agent safety evaluation, multi-agent memory contamination, anytime-valid inference, e-values, e-process, test martingale, Ville's inequality, sequential testing, reproducible evaluation, record and replay, cassette, evaluation harness, harness tuning protocol, HTP-1.
+
+## Repository
+- [GitHub repository](https://github.com/csnyder256/harness-tuner)
+- [Project page](https://csnyder256.github.io/harness-tuner/)
+- Related: [RAG-OS](https://github.com/csnyder256/RAG-OS) (personal always-on AI agent blueprint), [org-memory-os](https://github.com/csnyder256/org-memory-os) (organization-wide shared AI memory blueprint)

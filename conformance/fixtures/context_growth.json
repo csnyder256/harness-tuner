@@ -1,0 +1,19 @@
+{
+  "name": "context_growth",
+  "description": "Context that grows by a fixed amount every step, which is the signature of a harness that appends and never compacts. The slope is the number a proposed compaction change is predicted to move, and it is why the slope is reported rather than only the peak.",
+  "task": {},
+  "trace": [
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 0, "duration_ms": 500,
+     "tokens": {"input": 1000, "output": 50, "cache_read": 0, "cache_write": 0},
+     "cost_usd": 0.001, "model": "reference-model", "context_tokens": 1000},
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 500, "duration_ms": 520,
+     "tokens": {"input": 2000, "output": 60, "cache_read": 0, "cache_write": 0},
+     "cost_usd": 0.002, "model": "reference-model", "context_tokens": 2000},
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 1020, "duration_ms": 540,
+     "tokens": {"input": 3000, "output": 70, "cache_read": 0, "cache_write": 0},
+     "cost_usd": 0.003, "model": "reference-model", "context_tokens": 3000},
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 1560, "duration_ms": 560,
+     "tokens": {"input": 4000, "output": 80, "cache_read": 0, "cache_write": 0},
+     "cost_usd": 0.004, "model": "reference-model", "context_tokens": 4000}
+  ]
+}

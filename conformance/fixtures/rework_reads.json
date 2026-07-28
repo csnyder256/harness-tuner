@@ -1,0 +1,12 @@
+{
+  "name": "rework_reads",
+  "description": "Re-reading without looping. The agent never repeats itself twice in a row, so loop detection stays quiet, but it reads two files it had already read. This is the shape of a harness with no working memory of what it has already seen, and it is usually the largest recoverable token line in a coding harness.",
+  "task": {"success": true},
+  "trace": [
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "a.py"}, "result_kind": "ok", "started_ms": 0, "duration_ms": 30},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "b.py"}, "result_kind": "ok", "started_ms": 30, "duration_ms": 33},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "a.py"}, "result_kind": "ok", "started_ms": 63, "duration_ms": 29},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "c.py"}, "result_kind": "ok", "started_ms": 92, "duration_ms": 31},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "b.py"}, "result_kind": "ok", "started_ms": 123, "duration_ms": 28}
+  ]
+}

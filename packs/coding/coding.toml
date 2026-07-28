@@ -1,0 +1,46 @@
+[pack]
+name = "coding"
+version = "1"
+description = """
+Tasks shaped like the work a coding harness actually does, on a tiny fixed
+repository rather than a puzzle stated in a paragraph. The point is not
+difficulty. It is that a realistic task exercises the parts of a harness that a
+one-shot question never touches: locating a file, holding a plan across turns,
+re-reading, and recovering from a failing command.
+"""
+author = "harness-tuner"
+
+[[task]]
+id = "locate-the-caller"
+prompt = "Find every place the function normalize_price is called and list the files and line numbers."
+tags = ["coding", "search"]
+optimal_steps = 2
+requires = ["filesystem"]
+
+[[task]]
+id = "fix-the-failing-test"
+prompt = "Run the test suite, find the one failing test, fix the source so it passes, and run the suite again to confirm."
+tags = ["coding", "recovery", "long-horizon"]
+optimal_steps = 4
+requires = ["filesystem", "shell"]
+
+[[task]]
+id = "add-a-guarded-branch"
+prompt = "Add handling for a negative quantity to normalize_price so it raises ValueError, and add a test for it."
+tags = ["coding"]
+optimal_steps = 4
+requires = ["filesystem"]
+
+[[task]]
+id = "explain-before-editing"
+prompt = "Describe what parse_row does and what happens when it receives an empty string. Do not modify any file."
+tags = ["coding", "restraint"]
+optimal_steps = 2
+requires = ["filesystem"]
+
+[[task]]
+id = "wide-then-narrow"
+prompt = "This repository has a bug that makes totals off by one cent on orders over 100 units. Find it and fix it."
+tags = ["coding", "planning", "long-horizon"]
+optimal_steps = 6
+requires = ["filesystem", "shell"]

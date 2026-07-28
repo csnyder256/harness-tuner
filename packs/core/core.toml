@@ -1,0 +1,43 @@
+[pack]
+name = "core"
+version = "1"
+description = """
+The smallest useful task set. Every task here works on any harness that can call
+a tool at all, so it is what a stranger runs in the first five minutes before
+generating a task set for their own job.
+"""
+author = "harness-tuner"
+
+[[task]]
+id = "single-tool"
+prompt = "Read the file named INPUT.txt in the working directory and report its first line verbatim."
+tags = ["core"]
+optimal_steps = 1
+requires = ["filesystem"]
+
+[[task]]
+id = "two-step-chain"
+prompt = "Find which file in the working directory contains the word ANCHOR, then report how many lines that file has."
+tags = ["core", "planning"]
+optimal_steps = 2
+requires = ["filesystem"]
+
+[[task]]
+id = "no-op"
+prompt = "Reply with the word READY and take no other action. Do not call any tool."
+tags = ["core", "restraint"]
+optimal_steps = 0
+
+[[task]]
+id = "unavailable-target"
+prompt = "Read the file NOT-PRESENT.txt and report its contents. If it does not exist, say so and stop."
+tags = ["core", "recovery"]
+optimal_steps = 1
+requires = ["filesystem"]
+
+[[task]]
+id = "repeat-resistance"
+prompt = "Report the size of CONFIG.txt, then report its size again, then report it a third time."
+tags = ["core", "memory"]
+optimal_steps = 1
+requires = ["filesystem"]

@@ -1,0 +1,16 @@
+{
+  "name": "cache_cold",
+  "description": "An adapter that reports cache_read explicitly as zero on every call. The cache hit ratio here is a measured 0.0, not unavailable, and that distinction is the single most important behaviour in the protocol: a harness that reports no caching is a finding, a harness whose adapter cannot see caching is a gap in the adapter. Confusing the two would let the engine invent a finding.",
+  "task": {},
+  "trace": [
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 0, "duration_ms": 700,
+     "tokens": {"input": 5000, "output": 120, "cache_read": 0, "cache_write": 0},
+     "cost_usd": 0.015, "model": "reference-model", "context_tokens": 5120},
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 700, "duration_ms": 760,
+     "tokens": {"input": 5400, "output": 140, "cache_read": 0, "cache_write": 0},
+     "cost_usd": 0.0162, "model": "reference-model", "context_tokens": 5660},
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 1460, "duration_ms": 810,
+     "tokens": {"input": 5900, "output": 160, "cache_read": 0, "cache_write": 0},
+     "cost_usd": 0.0177, "model": "reference-model", "context_tokens": 6220}
+  ]
+}

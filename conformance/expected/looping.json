@@ -1,0 +1,149 @@
+{
+  "metrics": {
+    "autonomy_ratio": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 1.0
+    },
+    "cache_hit_ratio": {
+      "reason": "no step reported input or cache_read tokens",
+      "status": "unavailable",
+      "unit": "ratio",
+      "value": null
+    },
+    "context_growth_per_step": {
+      "reason": "a slope needs at least 3 steps reporting context_tokens, found 0",
+      "status": "unavailable",
+      "unit": "tokens/step",
+      "value": null
+    },
+    "context_peak": {
+      "reason": "no step reported context_tokens",
+      "status": "unavailable",
+      "unit": "tokens",
+      "value": null
+    },
+    "cost_usd": {
+      "reason": "no step reported a cost; supply per-step cost or a price table for the model",
+      "status": "unavailable",
+      "unit": "usd",
+      "value": null
+    },
+    "distinct_tools": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tools",
+      "value": 2
+    },
+    "error_count": {
+      "reason": null,
+      "status": "measured",
+      "unit": "steps",
+      "value": 0
+    },
+    "error_rate": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 0.0
+    },
+    "human_input_steps": {
+      "reason": null,
+      "status": "measured",
+      "unit": "steps",
+      "value": 0
+    },
+    "loop_max_run": {
+      "reason": null,
+      "status": "measured",
+      "unit": "calls",
+      "value": 5
+    },
+    "recovery_rate": {
+      "reason": "no error occurred, so a recovery rate is undefined",
+      "status": "unavailable",
+      "unit": "ratio",
+      "value": null
+    },
+    "redundant_call_count": {
+      "reason": null,
+      "status": "measured",
+      "unit": "calls",
+      "value": 4
+    },
+    "redundant_call_ratio": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 0.666667
+    },
+    "rework_ratio": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 0.8
+    },
+    "step_count": {
+      "reason": null,
+      "status": "measured",
+      "unit": "steps",
+      "value": 6
+    },
+    "step_efficiency": {
+      "reason": "this task declares no optimal_steps, so efficiency has no reference point",
+      "status": "unavailable",
+      "unit": "ratio",
+      "value": null
+    },
+    "task_success": {
+      "reason": null,
+      "status": "measured",
+      "unit": "bool",
+      "value": true
+    },
+    "time_to_first_action_ms": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ms",
+      "value": 0
+    },
+    "tokens_cache_read": {
+      "reason": "no step reported cache read tokens; this adapter is below level L1",
+      "status": "unavailable",
+      "unit": "tokens",
+      "value": null
+    },
+    "tokens_cache_write": {
+      "reason": "no step reported cache write tokens; this adapter is below level L1",
+      "status": "unavailable",
+      "unit": "tokens",
+      "value": null
+    },
+    "tokens_input": {
+      "reason": "no step reported input tokens; this adapter is below level L1",
+      "status": "unavailable",
+      "unit": "tokens",
+      "value": null
+    },
+    "tokens_output": {
+      "reason": "no step reported output tokens; this adapter is below level L1",
+      "status": "unavailable",
+      "unit": "tokens",
+      "value": null
+    },
+    "tool_call_count": {
+      "reason": null,
+      "status": "measured",
+      "unit": "calls",
+      "value": 6
+    },
+    "wall_ms": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ms",
+      "value": 220
+    }
+  },
+  "name": "looping"
+}

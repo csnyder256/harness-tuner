@@ -1,0 +1,12 @@
+{
+  "name": "human_in_loop",
+  "description": "A harness that stops and asks. Autonomy is reported as a ratio rather than a verdict because asking is not automatically a defect: a harness that asks before a destructive action is behaving correctly, and one that asks because it cannot find a file is not. The metric names the frequency; the diagnosis names which kind it was.",
+  "task": {"success": true},
+  "trace": [
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "plan.md"}, "result_kind": "ok", "started_ms": 0, "duration_ms": 25},
+    {"kind": "human_input", "result_kind": "ok", "started_ms": 25, "duration_ms": 41000},
+    {"kind": "tool_call", "tool": "edit_file", "args": {"path": "plan.md"}, "result_kind": "ok", "started_ms": 41025, "duration_ms": 60},
+    {"kind": "human_input", "result_kind": "ok", "started_ms": 41085, "duration_ms": 22000},
+    {"kind": "tool_call", "tool": "submit", "args": {"answer": "applied"}, "result_kind": "ok", "started_ms": 63085, "duration_ms": 18}
+  ]
+}

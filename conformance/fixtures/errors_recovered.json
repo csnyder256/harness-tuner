@@ -1,0 +1,11 @@
+{
+  "name": "errors_recovered",
+  "description": "Two failures, each retried successfully on the next step. A harness that recovers cleanly should not be penalised for the error rate alone, which is why recovery_rate is reported beside it rather than folded into it.",
+  "task": {"success": true},
+  "trace": [
+    {"kind": "tool_call", "tool": "run_tests", "args": {"suite": "unit"}, "result_kind": "error", "started_ms": 0, "duration_ms": 900},
+    {"kind": "tool_call", "tool": "run_tests", "args": {"suite": "unit", "retry": true}, "result_kind": "ok", "started_ms": 900, "duration_ms": 950},
+    {"kind": "tool_call", "tool": "edit_file", "args": {"path": "main.py"}, "result_kind": "error", "started_ms": 1850, "duration_ms": 60},
+    {"kind": "tool_call", "tool": "edit_file", "args": {"path": "main.py", "mode": "create"}, "result_kind": "ok", "started_ms": 1910, "duration_ms": 55}
+  ]
+}

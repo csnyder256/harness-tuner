@@ -1,0 +1,12 @@
+{
+  "name": "redacted_args",
+  "description": "A harness whose tool arguments must not leave the machine. The adapter supplies args_digest and omits args entirely. Loop and rework detection still work, because they only ever needed to know whether two calls were the same, not what they said. This is why the protocol separates the two fields.",
+  "task": {"success": true},
+  "trace": [
+    {"kind": "tool_call", "tool": "query_records", "args_digest": "sha256:aaa", "result_kind": "ok", "started_ms": 0, "duration_ms": 210},
+    {"kind": "tool_call", "tool": "query_records", "args_digest": "sha256:bbb", "result_kind": "ok", "started_ms": 210, "duration_ms": 198},
+    {"kind": "tool_call", "tool": "query_records", "args_digest": "sha256:aaa", "result_kind": "ok", "started_ms": 408, "duration_ms": 205},
+    {"kind": "tool_call", "tool": "query_records", "args_digest": "sha256:aaa", "result_kind": "ok", "started_ms": 613, "duration_ms": 201},
+    {"kind": "tool_call", "tool": "submit", "args_digest": "sha256:ccc", "result_kind": "ok", "started_ms": 814, "duration_ms": 19}
+  ]
+}

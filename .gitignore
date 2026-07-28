@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Run output. Artifacts belong to whoever produced them, not to the repo.
+results/
+*.cassette.jsonl

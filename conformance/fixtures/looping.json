@@ -1,0 +1,13 @@
+{
+  "name": "looping",
+  "description": "The failure that burns a budget without erroring: the same call with the same arguments, five times in a row, then a submit. Nothing here fails and nothing hangs, so a suite that only checks task outcome sees a pass. loop_max_run is what names it.",
+  "task": {"success": true},
+  "trace": [
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "config.py"}, "result_kind": "ok", "started_ms": 0, "duration_ms": 40},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "config.py"}, "result_kind": "ok", "started_ms": 40, "duration_ms": 38},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "config.py"}, "result_kind": "ok", "started_ms": 78, "duration_ms": 41},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "config.py"}, "result_kind": "ok", "started_ms": 119, "duration_ms": 39},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "config.py"}, "result_kind": "ok", "started_ms": 158, "duration_ms": 40},
+    {"kind": "tool_call", "tool": "submit", "args": {"answer": "done"}, "result_kind": "ok", "started_ms": 198, "duration_ms": 22}
+  ]
+}
