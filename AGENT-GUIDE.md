@@ -50,13 +50,11 @@ docker run --rm -v "$PWD:/work" -w /work ghcr.io/csnyder256/harness-tuner:latest
 python -m harness_tuner doctor
 ```
 
-**Rung 3, reimplement it.** If the machine has no container runtime and no suitable Python, implement HTP-1 (Part 2) in whatever that machine does have, then prove your implementation is correct:
+**Rung 3, reimplement it.** If the machine has no container runtime and no suitable Python, implement HTP-1 in whatever that machine does have, working only from Part 2 of this file. Part 2 is complete: it specifies the trace record, all twenty-four metrics with their units and combiners, and the artifacts. You do not need to read the reference implementation, which is just as well, because on this rung you cannot run it.
 
-```bash
-python -m harness_tuner conformance --suite conformance
-```
+Then prove your implementation is correct against `conformance/`, which is plain data rather than a program: eleven fixture traces plus the exact metric block a correct implementation produces from each. Comparing them is a JSON deep-equal and needs nothing from this repository. Appendix C has the procedure.
 
-Rung 3 is a real option, not a consolation prize, but it is only safe because of that last command. The `conformance/` directory holds fixture traces and the exact metric values a correct implementation produces from them. A reimplementation that computes `rework_ratio` subtly differently produces a report that looks exactly as convincing as a correct one, and nothing else in the system would catch it. Do not ship a reimplementation that has not passed the suite, and say so plainly to the humans if you cannot get it to pass.
+Rung 3 is a real option, not a consolation prize, but it is only safe because of that comparison. A reimplementation that computes `rework_ratio` subtly differently produces a report that looks exactly as convincing as a correct one, and nothing else in the system would catch it. Do not ship a reimplementation that has not passed the suite, and say so plainly to the humans if you cannot get it to pass.
 
 ---
 
@@ -191,7 +189,7 @@ Concretely: if the harness reports no cache statistics, `cache_read` is `null` a
 
 ## 2.2 Metrics
 
-Twenty-four metrics are computed from a trace. Their exact definitions live in `harness_tuner/protocol/metrics.py`, which is normative, and the values a correct implementation produces from the fixtures live in `conformance/expected/`.
+Twenty-four metrics are computed from a trace. All of them are specified here, because rung 3 asks you to implement Part 2 and a specification that points at an implementation is not a specification.
 
 Every metric is one of two shapes:
 
@@ -203,6 +201,43 @@ Every metric is one of two shapes:
 A metric that is *undefined* rather than merely unobserved also reports unavailable and says which. A recovery rate over zero errors is undefined, not perfect; reporting 1.0 would let a harness that never got far enough to fail outscore one that failed and recovered.
 
 When a run has several tasks, each metric combines according to a declared combiner: `sum`, `max`, `mean`, or `rate`. This is explicit rather than inferred, because inferring it from the unit is how a per-task longest-loop-run of 5 and another of 1 aggregate to 6, which describes no run that ever happened and looks entirely plausible in a table. Every aggregate entry also carries a coverage record naming how many tasks measured it, and anything measured in only some of them is reported separately and before the main table.
+
+`sum` totals across tasks, `max` takes the largest any single task reached, `mean` averages over only the tasks that measured it, and `rate` is the share of measuring tasks where the boolean was true. A metric no task measured stays unavailable and collects the distinct reasons.
+
+### The twenty-four metrics
+
+`unit` and `combiner` are part of the specification: an implementation that reports `loop_max_run` in the wrong unit, or sums it across tasks, is not conformant. "Better" is the direction the report and `verify` treat as an improvement.
+
+| Metric | Unit | Combiner | Better | Definition |
+|---|---|---|---|---|
+| `step_count` | steps | sum | lower | Number of records in the trace. |
+| `tool_call_count` | calls | sum | lower | Records whose `kind` is `tool_call`. |
+| `distinct_tools` | tools | mean | higher | Count of distinct non-null `tool` values among tool calls. |
+| `human_input_steps` | steps | sum | lower | Records whose `kind` is `human_input`. |
+| `autonomy_ratio` | ratio | mean | higher | `1 - human_input_steps / step_count`. Unavailable when the trace has no steps. |
+| `redundant_call_count` | calls | sum | lower | Tool calls repeating a `(tool, args_digest)` pair already seen in this task. Calls with no `args_digest` are excluded from numerator and denominator rather than assumed distinct. |
+| `redundant_call_ratio` | ratio | mean | lower | `redundant_call_count` over the comparable tool calls (those carrying an `args_digest`). |
+| `loop_max_run` | calls | max | lower | Longest unbroken run of consecutive tool calls sharing one `step_hash`. Non-tool-call records break a run. Minimum 1 when any comparable call exists. |
+| `rework_ratio` | ratio | mean | lower | Among read-shaped calls carrying an `args_digest`, the share repeating a `(tool, args_digest)` already seen. Read-shaped means the tool name contains one of `read_tool_hints`, defaulting to `read, get, fetch, list, search, grep, cat, view`. |
+| `tokens_input` | tokens | sum | lower | Sum of `tokens.input` over steps reporting it. |
+| `tokens_output` | tokens | sum | lower | Sum of `tokens.output` over steps reporting it. |
+| `tokens_cache_read` | tokens | sum | higher | Sum of `tokens.cache_read` over steps reporting it. |
+| `tokens_cache_write` | tokens | sum | higher | Sum of `tokens.cache_write` over steps reporting it. |
+| `cache_hit_ratio` | ratio | mean | higher | `sum(cache_read) / (sum(cache_read) + sum(input))`. Unavailable when neither is reported, and also when input is reported but `cache_read` is not, since the share is then unknown. A reported zero yields a measured `0.0`. |
+| `cost_usd` | usd | sum | lower | Sum of `cost_usd` over steps reporting it. Rounded to 8 decimal places. |
+| `context_peak` | tokens | max | lower | Largest `context_tokens` reported. |
+| `context_growth_per_step` | tokens/step | mean | lower | Least-squares slope of `context_tokens` against `step`, over steps reporting it. Needs at least 3 such steps. Unavailable if every reported step index is identical. |
+| `wall_ms` | ms | sum | lower | `max(started_ms + duration_ms)` over steps reporting `duration_ms`, treating a null `started_ms` as 0. |
+| `time_to_first_action_ms` | ms | mean | lower | `started_ms` of the first `tool_call` or `model_call`. Unavailable if that step reports no `started_ms`. |
+| `error_count` | steps | sum | lower | Steps whose `result_kind` is `error`, counted over steps whose `result_kind` is not `unknown`. |
+| `error_rate` | ratio | mean | lower | `error_count` over the steps with a known `result_kind`. |
+| `recovery_rate` | ratio | mean | higher | Share of error steps followed, within the next 3 steps, by a step with the same `tool` and `result_kind` of `ok`. **Undefined, therefore unavailable, when no error occurred.** Reporting 1.0 would let a harness that never got far enough to fail outscore one that failed and recovered. |
+| `step_efficiency` | ratio | mean | higher | The task's declared `optimal_steps` over `tool_call_count`. Unavailable when the task declares no `optimal_steps`. |
+| `task_success` | bool | rate | higher | The task's `success` value, from a deterministic check or a judge verdict. **Never inferred from the trace**, because an agent that stops early leaves a trace that looks much like success. |
+
+Rounding: ratios and slopes to 6 decimal places, `cost_usd` to 8.
+
+Every metric not marked otherwise reports `unavailable` when its inputs are absent, with a reason naming what was missing. `conformance/expected/` records the exact `value`, `status`, `reason` and `unit` for all twenty-four across all eleven fixtures, so any disagreement is visible rather than a matter of interpretation.
 
 ## 2.3 Artifacts
 
@@ -379,12 +414,24 @@ alpha                     = 0.05     # the evidence bar: 0.05 means 20 to 1
 
 ## Appendix C. If you are reimplementing HTP-1
 
-You are on rung 3. Implement Part 2, then:
+You are on rung 3. Everything you need is in Part 2; you do not need to read the reference implementation, and this appendix is written on the assumption that you cannot run it.
+
+**Implement Part 2, then verify yourself.** The conformance suite is plain data, not a program. For each of the eleven files in `conformance/fixtures/`:
+
+1. Read its `trace` array and its `task` object.
+2. Normalize the trace and compute all twenty-four metrics per section 2.2.
+3. Compare your metric block against the `metrics` object in `conformance/expected/<name>.json`.
+
+The comparison is an exact structural match on all four fields of every metric: `value`, `status`, `reason` and `unit`. A differing `reason` is a real failure, not cosmetic, because the reason is what a reader acts on when a metric is unavailable.
+
+You are conformant when all eleven match. Write that check in whatever language you implemented in; it is a JSON deep-equal over twenty-four keys and needs nothing from this repository.
+
+If the reference implementation *does* happen to run on your machine, it ships the same check:
 
 ```bash
 python -m harness_tuner conformance --suite conformance
 ```
 
-Ten fixtures, each pinning a specific behaviour. The two that catch the most reimplementation bugs are `l0_minimal`, where nineteen of twenty-four metrics must report unavailable and none may report zero, and `cache_cold`, where a cache hit ratio of exactly `0.0` must be *measured* rather than unavailable. If your implementation passes those two, it has probably understood the null rule, which is the only part of this specification that is easy to get subtly and invisibly wrong.
+**The two fixtures that catch the most reimplementation bugs.** `l0_minimal` is an adapter that saw nothing but tool names: nineteen of twenty-four metrics must report unavailable, and not one of them may report a zero. `cache_cold` is an adapter that explicitly reported zero cache hits: the cache hit ratio must come out as a *measured* `0.0`, not unavailable. Passing both means you have understood the null rule, which is the only part of this specification that is easy to get subtly and invisibly wrong.
 
-Do not regenerate the expected files to make your implementation pass. That is what `--write-expected` does and it is only ever correct for the reference implementation when a metric definition changed on purpose.
+**Do not edit the expected files to make your implementation pass.** They are the definition of correct. The reference implementation can regenerate them with `--write-expected`, and that is only ever appropriate when a metric definition in Part 2 changed on purpose.

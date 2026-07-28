@@ -287,3 +287,44 @@ def test_every_registered_metric_appears_in_every_expected_file():
         with open(os.path.join(ROOT, "expected", f"{name}.json"), "r", encoding="utf-8") as fh:
             recorded = set(json.load(fh)["metrics"])
         assert recorded == set(M.REGISTRY), f"{name} expected file is out of date"
+
+
+# ---------------------------------------------------------------------------
+# Bad input must not be able to manufacture a good number.
+#
+# optimal_steps is declared by whoever wrote the task, and for a generated task
+# set that is a model. Before this was validated, optimal_steps of -5 produced
+# a step_efficiency of -5.0, and optimal_steps of 1000 produced 1000.0. The
+# fingerprint scale clamps to [0, 1], so the second one is a perfect planning
+# score bought with one wrong field in a generated file.
+# ---------------------------------------------------------------------------
+
+
+def test_negative_optimal_steps_is_refused_not_computed():
+    trace = T.normalize_trace([{"kind": "tool_call", "tool": "t", "args": {"a": 1}}])
+    entry = M.step_efficiency(trace, {"optimal_steps": -5})
+    assert entry["status"] == M.UNAVAILABLE
+    assert entry["value"] is None
+    assert "not a number of steps" in entry["reason"]
+
+
+def test_non_numeric_optimal_steps_is_refused():
+    trace = T.normalize_trace([{"kind": "tool_call", "tool": "t", "args": {"a": 1}}])
+    for bad in ("three", None if False else [], {}, True):
+        entry = M.step_efficiency(trace, {"optimal_steps": bad})
+        assert entry["status"] == M.UNAVAILABLE, f"{bad!r} produced {entry}"
+
+
+def test_zero_optimal_steps_is_legitimate():
+    """The core pack's no-op task declares 0: any tool call at all is waste."""
+    trace = T.normalize_trace([{"kind": "tool_call", "tool": "t", "args": {"a": 1}}])
+    entry = M.step_efficiency(trace, {"optimal_steps": 0})
+    assert entry["status"] == M.MEASURED
+    assert entry["value"] == 0.0
+
+
+def test_beating_the_declared_optimum_is_reported_not_clipped():
+    """Finishing in fewer calls than declared is real, and stays visible."""
+    trace = T.normalize_trace([{"kind": "tool_call", "tool": "t", "args": {"a": 1}}])
+    entry = M.step_efficiency(trace, {"optimal_steps": 3})
+    assert entry["value"] == 3.0

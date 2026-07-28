@@ -1,0 +1,10 @@
+{
+  "name": "bad_optimal_steps",
+  "description": "A task whose declared optimal_steps is negative. optimal_steps is written by whoever authored the task, and for a generated task set that is a model, so it is input rather than fact. Computed naively this yields a negative efficiency, and because the fingerprint scale clamps to a closed interval, a sufficiently wrong declaration lands on a perfect planning score instead of an obviously broken one. Bad input must not be able to manufacture a good number, so the metric refuses it and says which task to fix.",
+  "task": {"optimal_steps": -5, "success": true},
+  "trace": [
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "a.py"}, "result_kind": "ok", "started_ms": 0, "duration_ms": 30},
+    {"kind": "tool_call", "tool": "edit_file", "args": {"path": "a.py"}, "result_kind": "ok", "started_ms": 30, "duration_ms": 44},
+    {"kind": "tool_call", "tool": "submit", "args": {"answer": "done"}, "result_kind": "ok", "started_ms": 74, "duration_ms": 18}
+  ]
+}

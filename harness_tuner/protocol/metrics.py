@@ -351,11 +351,31 @@ def recovery_rate(steps, task):
 
 
 def step_efficiency(steps, task):
-    """Optimal steps over actual steps. One is optimal, below one is waste."""
+    """Optimal steps over actual steps. One is optimal, below one is waste.
+
+    ``optimal_steps`` is declared by whoever wrote the task, and for a generated
+    task set that is a model. So it is validated here rather than trusted. A
+    negative value is not a number of steps, and left unchecked it produces a
+    negative efficiency that the fingerprint's scale clamps to zero at one end
+    and to a perfect score at the other. Bad input must not be able to
+    manufacture a good number.
+    """
     optimal = task.get("optimal_steps")
     if optimal is None:
         return unavailable(
             "this task declares no optimal_steps, so efficiency has no reference point",
+            "ratio",
+        )
+    if isinstance(optimal, bool) or not isinstance(optimal, (int, float)):
+        return unavailable(
+            f"this task declares optimal_steps as {type(optimal).__name__}, which is not a "
+            "number of steps, so efficiency cannot be computed",
+            "ratio",
+        )
+    if optimal < 0:
+        return unavailable(
+            f"this task declares optimal_steps of {optimal}, which is not a number of steps. "
+            "Fix the task rather than reading the efficiency it would have produced.",
             "ratio",
         )
     calls = len(_tool_calls(steps))
