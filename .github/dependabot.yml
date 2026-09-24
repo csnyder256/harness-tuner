@@ -1,0 +1,13 @@
+# harness-tuner has zero runtime dependencies by design, so the only thing
+# to keep patched is the CI and release actions. All action bumps arrive as
+# one grouped weekly PR, gated by the CI matrix.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]
