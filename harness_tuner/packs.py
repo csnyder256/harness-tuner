@@ -24,6 +24,8 @@ import os
 import tomllib
 from typing import Any
 
+from ._resources import resource_path
+
 PACKS_DIRNAME = "packs"
 
 
@@ -34,8 +36,7 @@ class PackError(ValueError):
 def packs_root(explicit: str | None = None) -> str:
     if explicit:
         return os.path.abspath(explicit)
-    here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(os.path.dirname(here), PACKS_DIRNAME)
+    return resource_path(PACKS_DIRNAME)
 
 
 def _load_file(path: str) -> dict[str, Any]:

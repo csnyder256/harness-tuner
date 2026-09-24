@@ -64,6 +64,12 @@ _register(
     "compare two runs task by task and report whether an applied change actually helped",
 )
 _register(
+    "guide",
+    "harness_tuner.guide",
+    "main",
+    "write AGENT-GUIDE.md into your project so a coding agent can set this up",
+)
+_register(
     "conformance",
     "harness_tuner.conformance",
     "main",

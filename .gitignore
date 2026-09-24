@@ -8,3 +8,8 @@ venv/
 # Run output. Artifacts belong to whoever produced them, not to the repo.
 results/
 *.cassette.jsonl
+
+# Build output.
+dist/
+build/
+*.egg-info/

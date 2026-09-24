@@ -21,6 +21,7 @@ import os
 import sys
 from typing import Any
 
+from ._resources import resource_path
 from .protocol import canonical_json, compute, normalize_trace
 
 FIXTURES_DIRNAME = "fixtures"
@@ -31,9 +32,7 @@ def suite_root(explicit: str | None = None) -> str:
     """Locate the shipped conformance directory."""
     if explicit:
         return os.path.abspath(explicit)
-    here = os.path.dirname(os.path.abspath(__file__))
-    candidate = os.path.join(os.path.dirname(here), "conformance")
-    return candidate
+    return resource_path("conformance")
 
 
 def load_fixtures(root: str) -> list[dict[str, Any]]:
