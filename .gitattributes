@@ -1,0 +1,6 @@
+# Shipped data is byte-exact on every platform. `harness-tuner guide` promises
+# the same bytes a release ships, and a Windows clone with core.autocrlf would
+# otherwise feed CRLF copies into a wheel built from git (pipx/uvx git+ URLs).
+AGENT-GUIDE.md text eol=lf
+packs/** text eol=lf
+conformance/** text eol=lf

@@ -10,5 +10,5 @@ is written so that its absence degrades to the delegated path rather than
 breaking the install.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __all__ = ["__version__"]
