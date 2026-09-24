@@ -52,9 +52,20 @@ def main(args) -> int:
         sys.stdout.buffer.flush()
         return 0
 
+    # A trailing separator means a directory, as with `run --out results/`,
+    # whether or not it exists yet. Missing parent directories are created.
+    names_directory = args.out.endswith(("/", os.sep)) or os.path.isdir(args.out)
     target = os.path.abspath(args.out)
-    if os.path.isdir(target):
+    if names_directory:
         target = os.path.join(target, GUIDE_NAME)
+    if os.path.isdir(target):
+        print(f"{target} is a directory; name the file to write", file=sys.stderr)
+        return 1
+    try:
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+    except OSError as exc:
+        print(f"cannot create the directory for {target}: {exc.strerror or exc}", file=sys.stderr)
+        return 1
     if os.path.exists(target) and not args.force:
         with open(target, "rb") as handle:
             if handle.read() == text:
@@ -64,8 +75,12 @@ def main(args) -> int:
         print(f"{target} exists and differs; pass --force to replace it", file=sys.stderr)
         return 1
 
-    with open(target, "wb") as handle:
-        handle.write(text)
+    try:
+        with open(target, "wb") as handle:
+            handle.write(text)
+    except OSError as exc:
+        print(f"cannot write {target}: {exc.strerror or exc}", file=sys.stderr)
+        return 1
     print(f"wrote {target}")
     print('next: tell your coding agent "Follow the agent protocol, and set this up for our harness."')
     return 0
