@@ -44,10 +44,11 @@ harness-tuner runs three ways. Work down this list and stop at the first that fi
 docker run --rm -v "$PWD:/work" -w /work ghcr.io/csnyder256/harness-tuner:latest doctor
 ```
 
-**Rung 2, the reference implementation.** Needs Python 3.11 or newer and nothing else. No install step, no dependencies, no build.
+**Rung 2, the reference implementation.** Needs Python 3.11 or newer and nothing else. No dependencies, no build. From a clone it needs no install step either; where a clone is awkward, `pipx install git+https://github.com/csnyder256/harness-tuner` or `uvx --from git+https://github.com/csnyder256/harness-tuner harness-tuner` installs the same code as a `harness-tuner` command.
 
 ```bash
-python -m harness_tuner doctor
+python -m harness_tuner doctor      # from a clone
+harness-tuner doctor                # installed
 ```
 
 **Rung 3, reimplement it.** If the machine has no container runtime and no suitable Python, implement HTP-1 in whatever that machine does have, working only from Part 2 of this file. Part 2 is complete: it specifies the trace record, all twenty-four metrics with their units and combiners, and the artifacts. You do not need to read the reference implementation, which is just as well, because on this rung you cannot run it.

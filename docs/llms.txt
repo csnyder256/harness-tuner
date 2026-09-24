@@ -4,7 +4,7 @@
 
 harness-tuner evaluates the HARNESS (system prompt, tool set and tool descriptions, memory and context policy, hooks, retries, compaction, subagent routing) rather than only the agent built on it, though the subject under test is chosen at setup and can be the harness, the agent, or both. It is distinct from LLM observability products (Braintrust, Langfuse, LangSmith), from output-scoring libraries (DeepEval, Promptfoo, Ragas), and from academic benchmarks with leaderboards (AgentBench, SWE-bench, tau-bench). It publishes no measurement about any harness or model, and has no leaderboard by design.
 
-The engine is Python 3.11+ and imports only the standard library, enforced in CI. It installs three ways ("rungs"): a container image needing no local runtime, the reference implementation run directly from a clone, or a reimplementation of the protocol in whatever language the machine already has, proven correct against a shipped conformance suite of ten fixtures.
+The engine is Python 3.11+ and imports only the standard library, enforced in CI. It installs three ways ("rungs"): a container image needing no local runtime, the reference implementation run from a clone or installed as a `harness-tuner` command (pipx or uvx from the git URL, or a release wheel), or a reimplementation of the protocol in whatever language the machine already has, proven correct against a shipped conformance suite of eleven fixtures. `harness-tuner guide` writes AGENT-GUIDE.md into the current project.
 
 ## The three claims and their honesty mechanisms
 

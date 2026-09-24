@@ -1,0 +1,67 @@
+# Packaging for the pip / pipx / uvx install rung. The engine is standard
+# library only: there is no [project.dependencies] table and there must never
+# be one. CI refuses a non-stdlib import inside harness_tuner/.
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "harness-tuner"
+dynamic = ["version"]
+description = "Measure an agent harness, find where it wastes the model, and prove a fix worked. Reference implementation of HTP-1."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Cade Snyder" }]
+keywords = [
+  "agent-harness", "agent-evaluation", "llm-evaluation", "ai-agents",
+  "e-values", "sequential-testing", "observability", "htp-1",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://csnyder256.github.io/harness-tuner/"
+Source = "https://github.com/csnyder256/harness-tuner"
+Specification = "https://github.com/csnyder256/harness-tuner/blob/main/AGENT-GUIDE.md"
+
+[project.scripts]
+harness-tuner = "harness_tuner.__main__:main"
+
+[tool.hatch.version]
+path = "harness_tuner/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["harness_tuner"]
+
+# An installed wheel has no repo root beside it, so the data that lives there
+# in a checkout is bundled inside the package. harness_tuner/_resources.py
+# prefers the checkout copy and falls back to these.
+[tool.hatch.build.targets.wheel.force-include]
+"packs" = "harness_tuner/_bundled/packs"
+"conformance" = "harness_tuner/_bundled/conformance"
+"AGENT-GUIDE.md" = "harness_tuner/_bundled/AGENT-GUIDE.md"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "harness_tuner/",
+  "packs/",
+  "conformance/",
+  "tests/",
+  "tools/",
+  "AGENT-GUIDE.md",
+  "README.md",
+  "LICENSE",
+]

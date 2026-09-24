@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python: ["3.11", "3.12", "3.13"]
+        python: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -74,6 +74,42 @@ jobs:
           python -m harness_tuner packs
           python -m harness_tuner tasks
 
+  installed:
+    name: installed wheel works outside the checkout (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the wheel and sdist
+        run: python -m pip install --upgrade build && python -m build
+      # A wheel has no repo root beside the package, so this is the only job
+      # that proves packs, conformance and the guide were bundled. It runs the
+      # command from an empty directory so nothing can be found by accident.
+      - name: Install into a clean venv and run from an empty directory
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          if [ -x "$RUNNER_TEMP/venv/bin/python" ]; then bin="$RUNNER_TEMP/venv/bin"; else bin="$RUNNER_TEMP/venv/Scripts"; fi
+          "$bin/python" -m pip install dist/*.whl
+          if "$bin/python" -m pip list --format=freeze | grep -viE '^(harness-tuner|pip|setuptools)=='; then
+            echo "the wheel pulled in a dependency"; exit 1
+          fi
+          mkdir "$RUNNER_TEMP/elsewhere" && cd "$RUNNER_TEMP/elsewhere"
+          "$bin/harness-tuner" --version
+          "$bin/harness-tuner" conformance
+          "$bin/harness-tuner" packs | grep -q "tasks)" || { echo "installed command found no packs"; exit 1; }
+          "$bin/harness-tuner" doctor
+          "$bin/harness-tuner" guide
+          test -s AGENT-GUIDE.md
+
   hygiene:
     name: text hygiene
     runs-on: ubuntu-latest
@@ -120,3 +156,5 @@ jobs:
           docker run --rm harness-tuner:ci --version
           docker run --rm harness-tuner:ci conformance
           docker run --rm harness-tuner:ci doctor
+          docker run --rm -v "$PWD/guide-out:/work" harness-tuner:ci guide
+          cmp guide-out/AGENT-GUIDE.md AGENT-GUIDE.md

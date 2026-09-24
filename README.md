@@ -40,12 +40,19 @@ Work down this list and stop at the first that fits your machine. "Machine agnos
 docker run --rm -v "$PWD:/work" -w /work ghcr.io/csnyder256/harness-tuner:latest doctor
 ```
 
-**2. The reference implementation.** Needs Python 3.11 or newer. No install step, no dependencies, no build.
+**2. The reference implementation.** Needs Python 3.11 or newer and nothing else: zero dependencies, nothing to compile. Run it from a clone, or install it as a command. The installed command bundles the packs, the conformance suite and the agent guide, so it works from any directory.
 
 ```bash
+# from a clone, no install step
 git clone https://github.com/csnyder256/harness-tuner && cd harness-tuner
 python -m harness_tuner doctor
+
+# or as a command on your PATH (either one)
+pipx install git+https://github.com/csnyder256/harness-tuner
+uvx --from git+https://github.com/csnyder256/harness-tuner harness-tuner doctor
 ```
+
+Each [release](https://github.com/csnyder256/harness-tuner/releases) also attaches a wheel, which `pip install` accepts directly on a machine that cannot reach GitHub's git endpoint.
 
 **3. Reimplement it.** No container runtime and no suitable Python? Implement the protocol in whatever your machine does have, then prove your implementation is correct against the shipped conformance suite.
 
@@ -53,7 +60,7 @@ python -m harness_tuner doctor
 python -m harness_tuner conformance
 ```
 
-Then, whichever rung you took, copy [`AGENT-GUIDE.md`](AGENT-GUIDE.md) into your project and tell your coding agent:
+Then, whichever rung you took, put [`AGENT-GUIDE.md`](AGENT-GUIDE.md) in your project (`harness-tuner guide` writes the copy that matches your installed version; from a clone, just copy the file) and tell your coding agent:
 
 > Follow the agent protocol, and set this up for our harness.
 
