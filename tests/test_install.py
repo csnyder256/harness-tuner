@@ -53,9 +53,18 @@ def test_installed_layout_falls_back_to_the_bundled_copy(tmp_path, monkeypatch):
     assert {"core", "coding", "memory", "safety", "org"} <= names
 
 
-def test_an_editable_copy_beside_the_package_wins(tmp_path, monkeypatch):
-    site, _ = _fake_install(tmp_path, monkeypatch, bundled=True, beside=True)
-    assert R.resource_path("packs") == str(site / "packs")
+def test_a_stray_directory_in_site_packages_cannot_shadow_the_bundled_copy(
+    tmp_path, monkeypatch
+):
+    """An installed wheel's parent is a shared site-packages. Any other
+    distribution could put an empty top-level `packs` there; that must not
+    turn `harness-tuner packs` into a silent "no packs found"."""
+    _, pkg = _fake_install(tmp_path, monkeypatch, bundled=True, beside=True)
+    assert R.resource_path("packs") == str(pkg / "_bundled" / "packs")
+
+    from harness_tuner import packs as PK
+
+    assert {"core", "coding", "memory", "safety", "org"} <= {p["name"] for p in PK.available()}
 
 
 def _guide_args(out, force=False):
@@ -79,6 +88,25 @@ def test_guide_is_idempotent_and_never_clobbers_an_edited_copy(tmp_path):
 
     assert G.main(_guide_args(target, force=True)) == 0
     assert target.read_bytes() == G.read_guide()
+
+
+def test_guide_out_with_trailing_slash_is_a_directory_even_if_missing(tmp_path):
+    target = tmp_path / "newdir"
+    assert G.main(_guide_args(str(target) + "/")) == 0
+    assert (target / "AGENT-GUIDE.md").read_bytes() == G.read_guide()
+
+
+def test_guide_creates_missing_parent_directories(tmp_path):
+    target = tmp_path / "a" / "b" / "AGENT-GUIDE.md"
+    assert G.main(_guide_args(target)) == 0
+    assert target.read_bytes() == G.read_guide()
+
+
+def test_guide_reports_an_unwritable_target_instead_of_crashing(tmp_path, capsys):
+    blocker = tmp_path / "file.txt"
+    blocker.write_text("not a directory", encoding="utf-8")
+    assert G.main(_guide_args(str(blocker / "sub") + "/")) == 1
+    assert "cannot" in capsys.readouterr().err
 
 
 def test_guide_to_stdout(capfdbinary):
