@@ -7,8 +7,8 @@
 
 <p align="center">
   <a href="https://github.com/csnyder256/harness-tuner/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/csnyder256/harness-tuner/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="MIT licensed" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-  <a href="AGENT-GUIDE.md"><img alt="protocol HTP-1" src="https://img.shields.io/badge/protocol-HTP--1-8957e5.svg"></a>
+  <a href="https://github.com/csnyder256/harness-tuner/blob/main/LICENSE"><img alt="MIT licensed" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <a href="https://github.com/csnyder256/harness-tuner/blob/main/AGENT-GUIDE.md"><img alt="protocol HTP-1" src="https://img.shields.io/badge/protocol-HTP--1-8957e5.svg"></a>
   <a href="#install-pick-a-rung"><img alt="Python 3.11+, zero dependencies" src="https://img.shields.io/badge/python-3.11%2B%20%C2%B7%20zero%20deps-3776ab.svg"></a>
   <a href="https://github.com/csnyder256/harness-tuner/pkgs/container/harness-tuner"><img alt="container image" src="https://img.shields.io/badge/ghcr.io-harness--tuner-2496ED.svg"></a>
   <a href="https://github.com/csnyder256/harness-tuner/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/csnyder256/harness-tuner?style=social"></a>
@@ -18,7 +18,7 @@
   If this saves you an argument about whether a change helped, a star helps other people find it.
 </p>
 
-![How harness-tuner fits around a harness it does not own](images/architecture.png)
+![How harness-tuner fits around a harness it does not own](https://raw.githubusercontent.com/csnyder256/harness-tuner/main/images/architecture.png)
 
 ---
 
@@ -60,7 +60,7 @@ Each [release](https://github.com/csnyder256/harness-tuner/releases) also attach
 python -m harness_tuner conformance
 ```
 
-Then, whichever rung you took, put [`AGENT-GUIDE.md`](AGENT-GUIDE.md) in your project (`harness-tuner guide` writes the copy that matches your installed version; from a clone, just copy the file) and tell your coding agent:
+Then, whichever rung you took, put [`AGENT-GUIDE.md`](https://github.com/csnyder256/harness-tuner/blob/main/AGENT-GUIDE.md) in your project (`harness-tuner guide` writes the copy that matches your installed version; from a clone, just copy the file) and tell your coding agent:
 
 > Follow the agent protocol, and set this up for our harness.
 
@@ -76,7 +76,7 @@ python -m harness_tuner run intake/ --out results/            # re-run the same 
 python -m harness_tuner verify --baseline results/<a> --variant results/<b>
 ```
 
-![The measure, propose, apply, prove loop](images/loop.png)
+![The measure, propose, apply, prove loop](https://raw.githubusercontent.com/csnyder256/harness-tuner/main/images/loop.png)
 
 ---
 
@@ -141,9 +141,9 @@ run.json  trace.jsonl  metrics.json  summary.md
 report.html  fingerprint.json  manifest.json  capabilities.json
 ```
 
-Any tool that reads those eight files can consume a run from any HTP-1 implementation. The specification is Part 2 of [`AGENT-GUIDE.md`](AGENT-GUIDE.md), and `conformance/` holds the fixtures plus the exact values a correct implementation produces from them.
+Any tool that reads those eight files can consume a run from any HTP-1 implementation. The specification is Part 2 of [`AGENT-GUIDE.md`](https://github.com/csnyder256/harness-tuner/blob/main/AGENT-GUIDE.md), and `conformance/` holds the fixtures plus the exact values a correct implementation produces from them.
 
-![What HTP-1 fixes and what it leaves to you](images/protocol.png)
+![What HTP-1 fixes and what it leaves to you](https://raw.githubusercontent.com/csnyder256/harness-tuner/main/images/protocol.png)
 
 ## How it compares
 
@@ -186,7 +186,7 @@ Adjacent to Braintrust, Langfuse, LangSmith, DeepEval, Promptfoo, Ragas, AgentBe
 
 ## Contributing
 
-Issues and pull requests welcome. The most useful contributions: an adapter for a harness nobody has written one for yet, an evaluation pack for a domain the shipped ones miss, a metric definition with a conformance fixture that pins it, or a case where a finding was wrong and the trace that proves it. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Issues and pull requests welcome. The most useful contributions: an adapter for a harness nobody has written one for yet, an evaluation pack for a domain the shipped ones miss, a metric definition with a conformance fixture that pins it, or a case where a finding was wrong and the trace that proves it. See [CONTRIBUTING.md](https://github.com/csnyder256/harness-tuner/blob/main/CONTRIBUTING.md).
 
 ## License
 
