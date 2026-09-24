@@ -110,7 +110,7 @@
     </div>
     <div class="rung">
       <div class="n">rung two</div><h3>Reference implementation</h3>
-      <p>Python 3.11 or newer, standard library only. No install step, no dependencies, no build.</p>
+      <p>Python 3.11 or newer, standard library only. Run it from a clone, or install it as a command with pipx or uvx. No dependencies, no build.</p>
     </div>
     <div class="rung">
       <div class="n">rung three</div><h3>Reimplement, then prove it</h3>
@@ -118,9 +118,12 @@
     </div>
   </div>
 
-<pre><code>docker run --rm -v "$PWD:/work" -w /work ghcr.io/csnyder256/harness-tuner:latest doctor</code></pre>
+<pre><code>docker run --rm -v "$PWD:/work" -w /work ghcr.io/csnyder256/harness-tuner:latest doctor
 
-  <p>Then copy <code>AGENT-GUIDE.md</code> into your project and tell your coding agent:</p>
+pipx install git+https://github.com/csnyder256/harness-tuner
+uvx --from git+https://github.com/csnyder256/harness-tuner harness-tuner doctor</code></pre>
+
+  <p>Then put <code>AGENT-GUIDE.md</code> in your project (<code>harness-tuner guide</code> writes the copy that matches your version) and tell your coding agent:</p>
 <pre><code>Follow the agent protocol, and set this up for our harness.</code></pre>
   <p>It reads your harness, works out what it can and cannot see, asks you the questions only you can answer, and writes the adapter. There is no SDK to learn and no integration to maintain.</p>
 
