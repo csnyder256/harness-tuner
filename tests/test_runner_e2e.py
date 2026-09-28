@@ -29,9 +29,9 @@ FIXTURES = os.path.join(suite_root(), "fixtures")
 #: Hand-totalled from the fixture files:
 #: l0_minimal 4, l1_full 6, looping 6, rework_reads 5, errors_recovered 4,
 #: errors_unrecovered 5, context_growth 4, cache_cold 3, human_in_loop 5,
-#: redacted_args 5, bad_optimal_steps 3.
-EXPECTED_TASKS = 11
-EXPECTED_STEPS = 50
+#: redacted_args 5, bad_optimal_steps 3, interleaved_loops 9.
+EXPECTED_TASKS = 12
+EXPECTED_STEPS = 59
 PER_TASK_STEPS = {
     "l0_minimal": 4,
     "l1_full": 6,
@@ -44,6 +44,7 @@ PER_TASK_STEPS = {
     "human_in_loop": 5,
     "redacted_args": 5,
     "bad_optimal_steps": 3,
+    "interleaved_loops": 9,
 }
 
 

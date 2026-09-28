@@ -53,7 +53,7 @@ harness-tuner doctor                # installed
 
 **Rung 3, reimplement it.** If the machine has no container runtime and no suitable Python, implement HTP-1 in whatever that machine does have, working only from Part 2 of this file. Part 2 is complete: it specifies the trace record, all twenty-four metrics with their units and combiners, and the artifacts. You do not need to read the reference implementation, which is just as well, because on this rung you cannot run it.
 
-Then prove your implementation is correct against `conformance/`, which is plain data rather than a program: eleven fixture traces plus the exact metric block a correct implementation produces from each. Comparing them is a JSON deep-equal and needs nothing from this repository. Appendix C has the procedure.
+Then prove your implementation is correct against `conformance/`, which is plain data rather than a program: twelve fixture traces plus the exact metric block a correct implementation produces from each. Comparing them is a JSON deep-equal and needs nothing from this repository. Appendix C has the procedure.
 
 Rung 3 is a real option, not a consolation prize, but it is only safe because of that comparison. A reimplementation that computes `rework_ratio` subtly differently produces a report that looks exactly as convincing as a correct one, and nothing else in the system would catch it. Do not ship a reimplementation that has not passed the suite, and say so plainly to the humans if you cannot get it to pass.
 
@@ -238,7 +238,7 @@ When a run has several tasks, each metric combines according to a declared combi
 
 Rounding: ratios and slopes to 6 decimal places, `cost_usd` to 8.
 
-Every metric not marked otherwise reports `unavailable` when its inputs are absent, with a reason naming what was missing. `conformance/expected/` records the exact `value`, `status`, `reason` and `unit` for all twenty-four across all eleven fixtures, so any disagreement is visible rather than a matter of interpretation.
+Every metric not marked otherwise reports `unavailable` when its inputs are absent, with a reason naming what was missing. `conformance/expected/` records the exact `value`, `status`, `reason` and `unit` for all twenty-four across all twelve fixtures, so any disagreement is visible rather than a matter of interpretation.
 
 ## 2.3 Artifacts
 
@@ -417,7 +417,7 @@ alpha                     = 0.05     # the evidence bar: 0.05 means 20 to 1
 
 You are on rung 3. Everything you need is in Part 2; you do not need to read the reference implementation, and this appendix is written on the assumption that you cannot run it.
 
-**Implement Part 2, then verify yourself.** The conformance suite is plain data, not a program. For each of the eleven files in `conformance/fixtures/`:
+**Implement Part 2, then verify yourself.** The conformance suite is plain data, not a program. For each of the twelve files in `conformance/fixtures/`:
 
 1. Read its `trace` array and its `task` object.
 2. Normalize the trace and compute all twenty-four metrics per section 2.2.
@@ -425,7 +425,7 @@ You are on rung 3. Everything you need is in Part 2; you do not need to read the
 
 The comparison is an exact structural match on all four fields of every metric: `value`, `status`, `reason` and `unit`. A differing `reason` is a real failure, not cosmetic, because the reason is what a reader acts on when a metric is unavailable.
 
-You are conformant when all eleven match. Write that check in whatever language you implemented in; it is a JSON deep-equal over twenty-four keys and needs nothing from this repository.
+You are conformant when all twelve match. Write that check in whatever language you implemented in; it is a JSON deep-equal over twenty-four keys and needs nothing from this repository.
 
 If the reference implementation *does* happen to run on your machine, it ships the same check:
 

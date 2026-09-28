@@ -124,18 +124,32 @@ def loop_max_run(steps, task):
 
     A high value is the signature of an agent spinning rather than one that
     revisited a file legitimately between other work.
+
+    A run is broken by anything that is not a comparable tool call. Walking the
+    trace in order rather than filtering first is the whole point: two identical
+    calls separated by a model turn are not consecutive, and the published
+    definition says so. Filtering the non-call steps out first would weld the two
+    calls into one run and report a loop the harness never executed, which then
+    reads as a finding the evidence cannot support.
     """
-    calls = [s for s in _tool_calls(steps) if s["args_digest"] is not None]
-    if not calls:
+    comparable = [s for s in _tool_calls(steps) if s["args_digest"] is not None]
+    if not comparable:
         return unavailable("no comparable tool calls in the trace", "calls")
     best = 1
-    current = 1
-    for prev, curr in zip(calls, calls[1:]):
-        if prev["step_hash"] == curr["step_hash"]:
+    current = 0
+    previous_hash: str | None = None
+    for step in steps:
+        if step["kind"] != "tool_call" or step["args_digest"] is None:
+            # A non-call record, or a call with nothing to compare, ends a run.
+            current = 0
+            previous_hash = None
+            continue
+        if current and step["step_hash"] == previous_hash:
             current += 1
-            best = max(best, current)
         else:
             current = 1
+        previous_hash = step["step_hash"]
+        best = max(best, current)
     return measured(best, "calls")
 
 
