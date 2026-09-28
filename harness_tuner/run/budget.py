@@ -16,6 +16,17 @@ The governor charges only what the adapter actually reported. If a harness
 reports no cost, the dollar ceiling cannot fire, and the governor says so
 rather than pretending the run was free. A ceiling that silently never fires is
 worse than no ceiling.
+
+"Reported" is doing real work in that sentence, so the boundary is defined the
+same way HTP-1 defines it everywhere else. A step that reports ``cost_usd`` of
+``0.0``, or token counts of ``0``, has been observed; a step that omits the
+field has not. The driver therefore charges a measured zero as zero and only
+passes ``None`` when no step reported the field at all, because reading ``0``
+as "nothing to see" turns a working ceiling into a false alarm about a broken
+one. Token use is all four HTP-1 token kinds, input, output, cache read and
+cache write: a ceiling over "tokens" that ignored cache reads would undercharge
+exactly the harnesses that cache most aggressively, which are the ones most
+likely to rely on it.
 """
 
 from __future__ import annotations
