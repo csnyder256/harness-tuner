@@ -153,6 +153,47 @@ def test_rework_without_looping():
     assert value("rework_reads", "loop_max_run") == 1
 
 
+def test_non_tool_call_records_break_a_loop():
+    """Identical calls separated by a model turn are not a run.
+
+    interleaved_loops calls read_file(a.py) four times, each pair split by a
+    model_call, then once more with nothing between. The longest unbroken run is
+    therefore the final adjacent pair, 2, not the four separated calls welded
+    together. A non-tool-call record breaks a run, exactly as the published
+    definition says.
+    """
+    assert value("interleaved_loops", "loop_max_run") == 2
+    # Repeats do not require adjacency: 1 first read plus 4 repeats.
+    assert value("interleaved_loops", "redundant_call_count") == 4
+    assert value("interleaved_loops", "redundant_call_ratio") == 0.666667
+    assert value("interleaved_loops", "rework_ratio") == 0.666667
+    # 6 tool calls over 9 records.
+    assert value("interleaved_loops", "step_count") == 9
+    assert value("interleaved_loops", "tool_call_count") == 6
+
+
+def test_loop_max_run_breaks_on_an_intervening_step():
+    """The metric and the detector agree on what ends a run.
+
+    detect_loops fires on the metric and then re-derives the offenders from the
+    steps, so a metric that over-counts manufactures a finding whose evidence
+    does not exist. Driving the metric directly pins the agreement.
+    """
+
+    def call(step, path):
+        return T.normalize_trace(
+            [{"kind": "tool_call", "tool": "read_file", "args": {"path": path}, "result_kind": "ok"}]
+        )[0] | {"step": step}
+
+    model = T.normalize_trace([{"kind": "model_call", "result_kind": "ok"}])[0] | {"step": 90}
+
+    contiguous = [call(1, "a"), call(2, "a"), call(3, "a")]
+    interleaved = [call(1, "a"), model, call(2, "a"), model, call(3, "a")]
+
+    assert M.loop_max_run(contiguous, {})["value"] == 3
+    assert M.loop_max_run(interleaved, {})["value"] == 1
+
+
 def test_recovery_window_is_enforced():
     # both errors retried on the very next step
     assert value("errors_recovered", "recovery_rate") == 1.0
