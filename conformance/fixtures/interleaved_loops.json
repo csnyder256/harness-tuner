@@ -1,0 +1,19 @@
+{
+  "name": "interleaved_loops",
+  "description": "Identical calls that are NOT consecutive. The same read_file(path=a.py) appears four times, always separated by a model_call, followed by one genuinely adjacent repeat. loop_max_run must report 2: the published definition says a non-tool-call record breaks a run, so the longest unbroken run is the final adjacent pair, not the four separated calls. An implementation that filters the model_calls out before comparing would weld all five into a run of 5 and report a loop the harness never executed. redundant_call_count still reports 4, because repeating a (tool, args_digest) pair does not require adjacency.",
+  "task": {
+    "success": true,
+    "read_tool_hints": ["read", "get", "fetch", "list", "search", "grep", "cat", "view"]
+  },
+  "trace": [
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "a.py"}, "result_kind": "ok", "started_ms": 0, "duration_ms": 38},
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 38, "duration_ms": 120, "tokens": {"input": 900, "output": 40}},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "a.py"}, "result_kind": "ok", "started_ms": 158, "duration_ms": 41},
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 199, "duration_ms": 118, "tokens": {"input": 940, "output": 38}},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "a.py"}, "result_kind": "ok", "started_ms": 317, "duration_ms": 39},
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 356, "duration_ms": 121, "tokens": {"input": 980, "output": 41}},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "a.py"}, "result_kind": "ok", "started_ms": 477, "duration_ms": 40},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "a.py"}, "result_kind": "ok", "started_ms": 517, "duration_ms": 38},
+    {"kind": "tool_call", "tool": "read_file", "args": {"path": "b.py"}, "result_kind": "ok", "started_ms": 555, "duration_ms": 37}
+  ]
+}

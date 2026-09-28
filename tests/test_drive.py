@@ -339,3 +339,152 @@ def test_corrupt_cassette_is_reported_not_ignored(tmp_path):
     path.write_text('{"key": "a", "payload": {}}\nnot json\n', encoding="utf-8")
     with pytest.raises(ValueError, match="corrupt cassette"):
         Cassette(str(path))
+
+
+# ---------------------------------------------------------------------------
+# What the governor is charged. The boundary between a reported zero and a
+# field nobody observed, and the definition of "token use".
+# ---------------------------------------------------------------------------
+
+#: A harness that reports a measured zero for cost and tokens. This is the
+#: case the governor must not confuse with a harness that reports nothing: the
+#: adapter is supplying the data, and the values happen to be zero.
+ZERO_REPORTING_HARNESS = textwrap.dedent(
+    '''
+    import json, sys
+
+    task_id, out_path, seed = sys.argv[1], sys.argv[2], sys.argv[3]
+    trace = [
+        {"kind": "model_call", "result_kind": "ok", "started_ms": 0, "duration_ms": 100,
+         "tokens": {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0},
+         "cost_usd": 0.0, "model": "free-tier", "context_tokens": 120},
+        {"kind": "tool_call", "tool": "read_file", "args": {"path": task_id + ".txt"},
+         "result_kind": "ok", "started_ms": 100, "duration_ms": 10, "cost_usd": 0.0},
+    ]
+    with open(out_path, "w", encoding="utf-8") as fh:
+        json.dump({"task_id": task_id, "task": {"success": True}, "trace": trace}, fh)
+    '''
+).strip()
+
+#: A harness whose traffic is nearly all prompt cache reads. A token ceiling
+#: that counts only input+output will undercharge this by an order of magnitude.
+CACHE_HEAVY_HARNESS = textwrap.dedent(
+    '''
+    import json, sys
+
+    task_id, out_path, seed = sys.argv[1], sys.argv[2], sys.argv[3]
+    trace = [
+        {"kind": "model_call", "result_kind": "ok", "started_ms": 0, "duration_ms": 100,
+         "tokens": {"input": 100, "output": 0, "cache_read": 9000, "cache_write": 0},
+         "cost_usd": 0.01, "model": "cached", "context_tokens": 9100},
+    ]
+    with open(out_path, "w", encoding="utf-8") as fh:
+        json.dump({"task_id": task_id, "task": {"success": True}, "trace": trace}, fh)
+    '''
+).strip()
+
+
+def _drive_with(tmp_path, source: str, *, budget: dict, task_cost: str | None = None):
+    """Drive a one-line harness written to disk, with the given budget block."""
+    import sys
+
+    script = tmp_path / "harness.py"
+    script.write_text(source, encoding="utf-8")
+    invoke = [sys.executable, str(script), "{task_id}", "{out}", "{seed}"]
+    if task_cost is not None:
+        invoke.append(task_cost)  # only the argv-driven fixture reads this
+    cfg = make_config(
+        str(script), tmp_path,
+        cost={"cassette": False, "budget": budget},
+    )
+    cfg.data["harness"]["invoke"] = invoke
+    gov = Governor.from_config(cfg)
+    records, halt = drive(
+        cfg, tasks(1), workspace=str(tmp_path), cassette=None, governor=gov, seed=7
+    )
+    return cfg, gov, records, halt
+
+
+def test_a_reported_zero_cost_is_a_measurement_not_an_absence(tmp_path):
+    """A step that reports cost_usd 0.0 must not be read as 'no cost reported'.
+
+    Collapsing a genuine 0.0 to None makes blind_spots() claim the dollar ceiling
+    can never fire, on a harness that is reporting cost accurately. That is the
+    null rule inverted at the process boundary.
+    """
+    _, gov, _, _ = _drive_with(tmp_path, ZERO_REPORTING_HARNESS,
+                               budget={"enabled": True, "max_usd": 5.0, "max_tokens": 0})
+    assert gov.cost_reported is True, "a reported 0.0 is a reported cost"
+    assert gov.spent_usd == 0.0
+    assert gov.blind_spots() == [], "the ceiling is real; it just has not been reached"
+
+
+def test_a_reported_zero_token_count_is_a_measurement_not_an_absence(tmp_path):
+    _, gov, _, _ = _drive_with(tmp_path, ZERO_REPORTING_HARNESS,
+                               budget={"enabled": True, "max_usd": 0, "max_tokens": 5000})
+    assert gov.tokens_reported is True, "reported 0 tokens is not the same as unreported"
+    assert gov.spent_tokens == 0
+
+
+def test_a_harness_that_reports_nothing_still_raises_the_blind_spot(tmp_path):
+    """The genuine inert-ceiling case must keep being reported.
+
+    This is the control for the two tests above: the fix must not silence a
+    ceiling that really cannot fire.
+    """
+    silent = textwrap.dedent(
+        '''
+        import json, sys
+        task_id, out_path, seed = sys.argv[1], sys.argv[2], sys.argv[3]
+        trace = [{"kind": "tool_call", "tool": "read_file", "args": {"path": "x"},
+                  "result_kind": "ok"}]
+        with open(out_path, "w", encoding="utf-8") as fh:
+            json.dump({"task_id": task_id, "task": {"success": True}, "trace": trace}, fh)
+        '''
+    ).strip()
+    _, gov, _, _ = _drive_with(tmp_path, silent,
+                               budget={"enabled": True, "max_usd": 5.0, "max_tokens": 5000})
+    assert gov.cost_reported is False
+    assert gov.tokens_reported is False
+    blind = gov.blind_spots()
+    assert any("cannot fire" in b for b in blind)
+
+
+def test_the_token_ceiling_counts_cache_reads(tmp_path):
+    """Token use is all four kinds, not just input+output.
+
+    The trace here reports 9,100 tokens (100 input + 9,000 cache_read). A
+    ceiling of 5,000 has to fire; charging only input+output would charge 100
+    and leave the ceiling inert.
+    """
+    _, gov, records, halt = _drive_with(
+        tmp_path, CACHE_HEAVY_HARNESS,
+        budget={"enabled": True, "max_usd": 0, "max_tokens": 5000},
+    )
+    assert gov.spent_tokens == 9100, "cache_read belongs in token use"
+    assert halt is not None and halt["at_task"] == "t1", "the ceiling must actually halt"
+
+
+def test_a_replayed_task_is_never_charged(tmp_path):
+    """Regression guard: the replay exemption must survive the charging rewrite."""
+    import sys
+
+    script = tmp_path / "harness.py"
+    script.write_text(CACHE_HEAVY_HARNESS, encoding="utf-8")
+    cfg = make_config(
+        str(script), tmp_path,
+        cost={"cassette": True, "budget": {"enabled": True, "max_usd": 0, "max_tokens": 5000}},
+    )
+    cfg.data["harness"]["invoke"] = [sys.executable, str(script), "{task_id}", "{out}", "{seed}"]
+
+    rec = Cassette(str(tmp_path / "rec.jsonl"))
+    drive(cfg, tasks(1), workspace=str(tmp_path), cassette=rec,
+          governor=Governor.from_config(cfg), seed=7)
+
+    gov = Governor.from_config(cfg)
+    replay = Cassette(str(tmp_path / "rec.jsonl"))
+    _, halt = drive(cfg, tasks(1), workspace=str(tmp_path), cassette=replay, governor=gov, seed=7)
+    assert replay.hits == 1
+    assert gov.tasks_charged == 0, "a replayed task is free"
+    assert gov.spent_tokens == 0
+    assert halt is None

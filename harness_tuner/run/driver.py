@@ -26,11 +26,54 @@ import subprocess
 import tempfile
 from typing import Any
 
-from ..protocol import TraceError, normalize_trace
+from ..protocol import TOKEN_KINDS, TraceError, normalize_trace
 from .budget import BudgetExceeded, Governor
 from .cassette import Cassette
 
 PLACEHOLDERS = ("task_id", "prompt", "workspace", "out", "seed")
+
+
+def _observed_cost(steps: list[dict[str, Any]]) -> float | None:
+    """What these steps cost, or ``None`` if no step reported a cost.
+
+    The distinction between ``None`` and ``0.0`` is the whole point of HTP-1's
+    null rule, and it has to survive this far down or the governor reports a
+    ceiling as inert on a harness that is reporting cost perfectly well. A
+    harness whose steps each genuinely cost ``0.0`` (a local model, a cached
+    turn, a free tier) reports a measured zero: ``sum`` gives ``0.0`` and the
+    dollar ceiling is real, just not yet reached. Collapsing that to ``None``
+    with ``or None`` made the governor announce that no cost was reported and
+    tell the operator to supply the data they had already supplied.
+    """
+    reported = [s["cost_usd"] for s in steps if s["cost_usd"] is not None]
+    if not reported:
+        return None
+    return sum(reported)
+
+
+def _observed_tokens(steps: list[dict[str, Any]]) -> int | None:
+    """Total tokens these steps used, or ``None`` if none was reported.
+
+    Every token field counts, not just ``input`` and ``output``: a token
+    ceiling caps token *use*, and on a harness with prompt caching most of the
+    traffic is ``cache_read``. Summing only the first two kinds let a task that
+    spent thousands of cached tokens be charged a few hundred against the
+    ceiling, so the ceiling fired far later than configured or never at all --
+    exactly the inert-ceiling failure the governor exists to prevent.
+
+    A field left unobserved contributes nothing to the total, but a reported
+    ``0`` is summed as ``0``: only a task where *no* step reported any token
+    field at all is ``None``.
+    """
+    reported = False
+    total = 0
+    for step in steps:
+        for kind in TOKEN_KINDS:
+            value = step["tokens"].get(kind)
+            if value is not None:
+                reported = True
+                total += value
+    return total if reported else None
 
 
 class DriveError(RuntimeError):
@@ -214,10 +257,8 @@ def drive(
         # governor fire on a free run.
         if replayed:
             continue
-        cost = sum(s["cost_usd"] for s in steps if s["cost_usd"] is not None) or None
-        tokens = sum(
-            (s["tokens"]["input"] or 0) + (s["tokens"]["output"] or 0) for s in steps
-        ) or None
+        cost = _observed_cost(steps)
+        tokens = _observed_tokens(steps)
         try:
             governor.charge(cost_usd=cost, tokens=tokens, task_id=task_id)
         except BudgetExceeded as exc:
