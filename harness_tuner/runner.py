@@ -198,7 +198,7 @@ def execute(
     write_json(rundir.path("fingerprint"), fingerprint_doc)
     write_json(rundir.path("capabilities"), caps)
     write_text(rundir.path("summary"), summary_markdown(run_doc, agg, fp))
-    write_text(rundir.path("report"), report_html(run_doc, agg, fp))
+    write_text(rundir.path("report"), report_html(run_doc, agg, fp, metrics_doc["per_task"]))
 
     # Per-task traces, then the merged view at the run root. Merged records
     # carry x_task_id and keep their within-task step number, so a record in

@@ -15,6 +15,7 @@ from __future__ import annotations
 import html
 from typing import Any
 
+from .interactive import run_explorer
 from ..protocol.metrics import LOWER_IS_BETTER, is_measured, partial_coverage
 
 STAR_FULL = "*"
@@ -179,7 +180,7 @@ def _bar(score: float) -> str:
     return f'<span class="track"><span class="bar" style="width:{pct:.1f}%"></span></span>'
 
 
-def report_html(run: dict[str, Any], agg: dict[str, dict], fp: dict[str, Any]) -> str:
+def report_html(run: dict[str, Any], agg: dict[str, dict], fp: dict[str, Any], tasks: list[dict] | None = None) -> str:
     e = html.escape
     stamp = run["config"]
     out: list[str] = []
@@ -280,5 +281,6 @@ def report_html(run: dict[str, Any], agg: dict[str, dict], fp: dict[str, Any]) -
         "Findings and proposed diffs, when present, live in <code>metrics.json</code> and "
         "the run manifest.</p>"
     )
+    out.append(run_explorer(run, agg, tasks))
     out.append("</main></body></html>")
     return "".join(out)
