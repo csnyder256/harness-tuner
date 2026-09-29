@@ -100,7 +100,7 @@ def build_comparison(baseline: str, variant: str, *, alpha: float | None = None)
 def comparison_html(doc: dict) -> str:
     e = html.escape
     warnings = "".join(f"<li>{e(w)}</li>" for w in doc["warnings"])
-    predictions = "".join(f'<li>{e(str(p["proposal_id"]))}: {e(p["metric"])} — {e(p["outcome"])}. {e(p["note"])}</li>' for p in doc["predictions_checked"])
+    predictions = "".join(f'<li>{e(str(p["proposal_id"]))}: {e(p["metric"])} - {e(p["outcome"])}. {e(p["note"])}</li>' for p in doc["predictions_checked"])
     pairs = "".join(f'<tr><td>{e(p["task_id"])}</td><td>{e(p["metric"])}</td><td>{p["baseline"] if p["baseline"] is not None else "unavailable"}</td><td>{p["variant"] if p["variant"] is not None else "unavailable"}</td><td>{p["delta"] if p["delta"] is not None else "unavailable"}</td></tr>' for p in doc["pairs"])
     provenance = e(json.dumps({"baseline": doc["baseline"], "variant": doc["variant"]}, indent=2))
     return (

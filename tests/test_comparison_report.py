@@ -59,9 +59,11 @@ def test_unit_mismatch_missing_values_and_zero_baselines_are_visible(tmp_path):
 
 def test_untrusted_task_ids_cannot_escape_embedded_data_or_html(tmp_path):
     task_id = "unsafe</script><script>alert(1)</script>"
-    before=build_run(tmp_path,"before",[(task_id,["x"],.01)])
-    after=build_run(tmp_path,"after",[(task_id,["x"],.01)])
-    document=comparison_html(build_comparison(before.root,after.root))
+    before=build_run(tmp_path,"before",[("safe_task",["x"],.01)])
+    after=build_run(tmp_path,"after",[("safe_task",["x"],.01)])
+    # Test untrusted display data without constructing an invalid Windows filename.
+    doc=json.loads(json.dumps(build_comparison(before.root,after.root)).replace("safe_task",task_id))
+    document=comparison_html(doc)
     assert task_id not in document
     assert "\\u003c/script>" in document
     assert "metric-search" in document
