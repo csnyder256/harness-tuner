@@ -198,3 +198,15 @@ MIT. Use it, fork it, build on it, sell what you build with it.
 [Latest release](https://github.com/csnyder256/harness-tuner/releases/latest) · [Install, deploy and upgrade](DEPLOYMENT.md)
 
 Release assets include checksums and version-specific notes.
+
+## Interactive reports and before/after comparisons
+
+Every run report now has a searchable, sortable metric explorer with JSON/CSV export and print controls. Reports are a single offline HTML file with no external scripts. Missing measurements and partial coverage remain prominent.
+
+Create a separate shareable comparison directory after applying a proposed change and rerunning the same tasks:
+
+    harness-tuner compare --baseline runs/before --variant runs/after --out reports/change-1
+
+Open comparison.html or share it with a collaborator. The accompanying comparison.json contains paired means, signed deltas, coverage, e-process verdicts, task-level measurements and SHA-256 fingerprints of both manifests and metrics. comparison.csv contains the metric summary for spreadsheets. Percentage change is unavailable for zero baselines. Predictions are checked with the same engine as verify. No raw trace, prompt, configuration object or local filesystem path is exported. Task IDs can still identify your work; review them before sharing.
+
+Different units are excluded and counted. Duplicate task IDs, inconsistent run/protocol IDs and nonfinite metrics are refused. Seed differences and unmatched tasks are disclosed. Equal task IDs do not prove equal task definitions or causality; use stable tasks and controlled conditions. Output must be a new directory outside the input runs, preserving the eight-artifact HTP contract.

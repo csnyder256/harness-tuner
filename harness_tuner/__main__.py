@@ -64,6 +64,12 @@ _register(
     "compare two runs task by task and report whether an applied change actually helped",
 )
 _register(
+    "compare",
+    "harness_tuner.compare",
+    "main",
+    "write a portable interactive before/after report with paired evidence and exports",
+)
+_register(
     "guide",
     "harness_tuner.guide",
     "main",

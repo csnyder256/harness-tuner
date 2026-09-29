@@ -190,7 +190,7 @@ def test_report_html_is_self_contained(rundir):
     assert "</html>" in html
     # no dependency the machine might not have
     for forbidden in ("<script src=", "http://", "https://", "cdn."):
-        assert forbidden not in html, f"report.html reaches for {forbidden}"
+        assert forbidden not in html.replace("http://www.w3.org/2000/svg", ""), f"report.html reaches for {forbidden}"
 
 
 def test_summary_lists_the_blind_spots_before_the_numbers(rundir):
