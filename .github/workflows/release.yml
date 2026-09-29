@@ -3,7 +3,6 @@ name: Release
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -19,6 +18,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install --upgrade pytest
+      - run: python scripts/verify_release.py
       - run: python -m pytest tests/ -q
       - run: python -m harness_tuner conformance
       - run: python tools/check_config_wiring.py
@@ -54,7 +54,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
       - uses: docker/build-push-action@v7
         with:
           context: .
@@ -84,13 +84,23 @@ jobs:
         with:
           name: python-dist
           path: python-dist/
+      - name: Checksum every download
+        run: |
+          python - <<'PYTHON'
+          import hashlib
+          from pathlib import Path
+          assets = [p for folder in ("dist", "python-dist") for p in Path(folder).iterdir() if p.is_file()]
+          Path("checksums.txt").write_text("".join(hashlib.sha256(p.read_bytes()).hexdigest() + "  " + p.name + "\n" for p in sorted(assets)))
+          PYTHON
       - uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/*.tar.gz
             dist/*.zip
             python-dist/*
-          generate_release_notes: true
+            checksums.txt
+          body_path: docs/releases/${{ github.ref_name }}.md
+          fail_on_unmatched_files: true
 
   pypi:
     name: publish to PyPI

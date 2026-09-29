@@ -191,3 +191,10 @@ Issues and pull requests welcome. The most useful contributions: an adapter for 
 ## License
 
 MIT. Use it, fork it, build on it, sell what you build with it.
+
+
+## Release downloads and deployment
+
+[Latest release](https://github.com/csnyder256/harness-tuner/releases/latest) · [Install, deploy and upgrade](DEPLOYMENT.md)
+
+Release assets include checksums and version-specific notes.
