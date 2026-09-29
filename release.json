@@ -1,0 +1,7 @@
+{
+  "name": "harness-tuner",
+  "package_json": [],
+  "version_patterns": {
+    "harness_tuner/__init__.py": "__version__\\s*=\\s*\"([^\"]+)\""
+  }
+}

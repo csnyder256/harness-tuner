@@ -13,3 +13,6 @@ results/
 dist/
 build/
 *.egg-info/
+
+# Release build output
+dist-release/
