@@ -72,9 +72,14 @@ def test_a_clean_run_produces_no_change_proposals():
     kinds = {f["kind"] for f in found}
     assert "loop" not in kinds
     assert "rework" not in kinds
-    # measurement gaps are expected: this fixture has no tokens or cost
-    assert kinds <= {"measurement"}
-    assert P.build([f for f in found if f["kind"] == "measurement"])[0]["prediction"] is None
+    # Adapter gaps are expected: this fixture has no tokens or cost. The
+    # undefined bucket is expected too: nothing errored, so there is no
+    # recovery to rate. Neither is a proposal for a change.
+    assert kinds <= {"measurement", "undefined_measurement"}
+    for kind in ("measurement", "undefined_measurement"):
+        proposals = P.build([f for f in found if f["kind"] == kind])
+        assert proposals, f"{kind} findings must still be reported"
+        assert all(p["prediction"] is None for p in proposals)
 
 
 def test_a_loop_is_found_and_points_at_the_exact_steps():
@@ -125,6 +130,97 @@ def test_a_budget_ceiling_that_cannot_fire_is_a_finding():
     budget = next(f for f in found if f["kind"] == "budget")
     assert budget["severity"] == F.HIGH
     assert "cannot fire" in budget["evidence"][0]["problem"]
+
+
+# ---------------------------------------------------------------------------
+# Undefined is not the same as unobserved.
+#
+# recovery_rate over zero errors is unavailable because the question does not
+# apply, not because the adapter failed to report something. Before this was
+# split out, a run with a fully-capable adapter and a fully-declared task set
+# was told to "raise the adapter level" for a metric that no adapter level can
+# produce, and the count of fixable metrics was inflated by one.
+# ---------------------------------------------------------------------------
+
+
+def test_a_fully_observed_run_reports_no_adapter_gaps():
+    """The adapter missed nothing, so there is nothing for it to go and fix."""
+    steps = normalize_trace(
+        [
+            {"kind": "model_call", "result_kind": "ok", "started_ms": 0, "duration_ms": 10,
+             "tokens": {"input": 100, "output": 20, "cache_read": 10, "cache_write": 5},
+             "cost_usd": 0.001, "model": "m", "context_tokens": 120},
+            {"kind": "tool_call", "tool": "read_file", "args": {"p": "a"}, "result_kind": "ok",
+             "started_ms": 10, "duration_ms": 5,
+             "tokens": {"input": 5, "output": 1, "cache_read": 0, "cache_write": 0},
+             "cost_usd": 0.0001, "context_tokens": 130},
+            {"kind": "tool_call", "tool": "write", "args": {"p": "a"}, "result_kind": "ok",
+             "started_ms": 15, "duration_ms": 5,
+             "tokens": {"input": 5, "output": 1, "cache_read": 0, "cache_write": 0},
+             "cost_usd": 0.0001, "context_tokens": 140},
+        ]
+    )
+    metrics = compute(steps, {"optimal_steps": 2, "success": True})
+    assert metrics["recovery_rate"]["status"] == "unavailable", "the premise: no errors occurred"
+
+    agg = aggregate([metrics])
+    found = F.analyze(agg, [{"task_id": "t1", "tags": [], "metrics": metrics, "steps": steps}], {})
+
+    kinds = {f["kind"] for f in found}
+    assert "measurement" not in kinds, (
+        "every field was supplied; there is no adapter gap to report. "
+        f"findings: {[f['id'] for f in found]}"
+    )
+    undefined = next(f for f in found if f["kind"] == "undefined_measurement")
+    assert [e["metric"] for e in undefined["evidence"]] == ["recovery_rate"]
+    assert undefined["measured"]["unavailable_metrics"] == 0
+
+
+def test_recovery_rate_is_never_counted_as_an_adapter_gap():
+    """The split, stated as the invariant: it is undefined, and it says so."""
+    runs = [make_task("t1", [("read_file", "a"), ("read_file", "b")])]
+    found, agg = analyze(runs)
+    assert agg["recovery_rate"]["status"] == "unavailable"
+
+    gap = next(f for f in found if f["kind"] == "measurement")
+    assert "recovery_rate" not in [e["metric"] for e in gap["evidence"]]
+    assert gap["measured"]["undefined_metrics"] == 1
+
+    undefined = next(f for f in found if f["kind"] == "undefined_measurement")
+    assert "undefined" in undefined["evidence"][0]["reason"]
+
+
+def test_the_undefined_finding_carries_a_remedy_that_is_not_an_adapter_change():
+    """A gap gets told to raise the adapter level. This must not be."""
+    runs = [make_task("t1", [("read_file", "a"), ("read_file", "b")])]
+    found, _ = analyze(runs)
+
+    undefined = next(f for f in found if f["kind"] == "undefined_measurement")
+    proposal = P.build([undefined])[0]
+    assert "adapter level" not in proposal["change"]
+    assert proposal["change"].startswith("Nothing to change")
+    assert proposal["prediction"] is None
+    # ... while the real gap keeps its actionable advice.
+    gap = next(f for f in found if f["kind"] == "measurement")
+    assert "Raise the adapter level" in P.build([gap])[0]["change"]
+
+
+def test_a_run_with_errors_still_gets_a_measured_recovery_rate():
+    """The split must not swallow the case the metric exists for."""
+    steps = normalize_trace(
+        [
+            {"kind": "tool_call", "tool": "run", "args": {"a": 1}, "result_kind": "error",
+             "started_ms": 0, "duration_ms": 10},
+            {"kind": "tool_call", "tool": "run", "args": {"a": 1}, "result_kind": "ok",
+             "started_ms": 10, "duration_ms": 10},
+        ]
+    )
+    metrics = compute(steps, {})
+    agg = aggregate([metrics])
+    found = F.analyze(agg, [{"task_id": "t1", "tags": [], "metrics": metrics, "steps": steps}], {})
+    assert not [f for f in found if f["kind"] == "undefined_measurement"], (
+        "the run did contain a failure, so the rate is defined and measured"
+    )
 
 
 # ---------------------------------------------------------------------------
