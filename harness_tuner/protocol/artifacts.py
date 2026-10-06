@@ -14,10 +14,17 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from .. import __version__
 from .trace import HTP_VERSION, canonical_json
 
 ENGINE_NAME = "harness-tuner"
-ENGINE_VERSION = "0.1.0"
+#: The version of the code that produced an artifact. It is the package's own
+#: single source of truth, not a literal. The envelope exists so a report read
+#: months later can be traced to the build that made it, and a hand-copied
+#: version is exactly the thing that goes stale on the first release and is
+#: never noticed, because every test still passes and the number still looks
+#: plausible. A literal here read ``0.1.0`` while the package shipped ``0.3.0``.
+ENGINE_VERSION = __version__
 IMPLEMENTATION = "reference-python"
 
 #: The normative artifact set. Keys are stable identifiers, values are the

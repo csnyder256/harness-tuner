@@ -183,6 +183,37 @@ def test_manifest_can_reproduce_the_task_set(rundir):
     assert manifest["engine_version"]
 
 
+def test_every_artifact_names_the_version_of_the_code_that_wrote_it(rundir):
+    """Provenance has to be true, and it has to stay true across releases.
+
+    The envelope exists so a report read months later can be traced to the
+    build that made it. A hand-copied version string drifts on the first
+    release and nothing fails: the number stays plausible and every other test
+    still passes, so the drift is only ever found by a reader. This pins every
+    artifact's engine.version to the package's own version, which is the one
+    the manifest already records, so a stale literal cannot ship again.
+    """
+    import harness_tuner
+    from harness_tuner.protocol.artifacts import ENGINE_VERSION
+
+    assert ENGINE_VERSION == harness_tuner.__version__
+
+    for key in ("run", "metrics", "fingerprint", "manifest"):
+        with open(rundir.path(key), "r", encoding="utf-8") as handle:
+            doc = json.load(handle)
+        assert doc["engine"]["version"] == harness_tuner.__version__, (
+            f"{key}.json reports engine version {doc['engine']['version']!r}, "
+            f"but this build is {harness_tuner.__version__!r}"
+        )
+
+    # The manifest carries the version in two places, the envelope's
+    # engine.version and its own engine_version. A hardcoded literal in the
+    # envelope is exactly how those two end up disagreeing in one file.
+    with open(rundir.path("manifest"), "r", encoding="utf-8") as handle:
+        manifest = json.load(handle)
+    assert manifest["engine_version"] == manifest["engine"]["version"]
+
+
 def test_report_html_is_self_contained(rundir):
     with open(rundir.path("report"), "r", encoding="utf-8") as handle:
         html = handle.read()
