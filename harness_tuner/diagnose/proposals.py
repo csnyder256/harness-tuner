@@ -78,6 +78,13 @@ _REMEDIES: dict[str, tuple[str, str]] = {
         "gaps are a work list rather than a mystery.",
         "Nothing here is a defect in the harness. It is a limit on what this adapter can see.",
     ),
+    "undefined_measurement": (
+        "Nothing to change. These metrics have no value because the run did not contain the "
+        "thing they measure, so the honest move is to read them as absent rather than to fix "
+        "them. If you want a recovery rate, the task set has to contain a task that fails.",
+        "A rate over zero events is undefined, not zero and not perfect. Reporting one would "
+        "let a harness that never got far enough to fail outscore one that failed and recovered.",
+    ),
 }
 
 

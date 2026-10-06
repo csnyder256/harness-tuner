@@ -260,17 +260,101 @@ def detect_unrecovered_errors(agg: dict[str, dict], task_runs: list[dict[str, An
     ]
 
 
+def _unavailable_split(
+    agg: dict[str, dict],
+) -> tuple[list[tuple[str, dict[str, Any]]], list[tuple[str, dict[str, Any]]]]:
+    """Split the unavailable metrics into (blind, undefined).
+
+    Two different things make a metric unavailable and they must not be reported
+    as one, because they have different remedies and only one of them has a
+    remedy at all.
+
+    * **Blind.** The adapter did not supply a field the metric needs. Raising the
+      adapter level closes it. These are the real gaps.
+    * **Undefined.** Every input was supplied and the metric still has no value,
+      because the question does not apply to this run. The clear case is a
+      recovery rate over zero errors: nothing failed, so there is nothing to
+      rate. No adapter change reaches it, and telling the operator to go and
+      supply data it already supplied is advice that cannot be followed.
+
+      The classification is deliberately narrow; :func:`_undefined_for_this_run`
+      holds the rule. A metric is moved here only when the run itself makes it
+      inapplicable, never when the operator could still declare an input that
+      would define it.
+
+    Lumping the second into the first is not cosmetic. It inflates the count of
+    "things you could fix by raising the level", and the remedy text is attached
+    to both, so a harness with a perfect adapter is handed a work item for a
+    metric that is undefined by construction. The metric's own definition says
+    so: reporting 1.0 for a recovery rate over no errors would let a harness that
+    never got far enough to fail outscore one that failed and recovered.
+    """
+    blind: list[tuple[str, dict[str, Any]]] = []
+    undefined: list[tuple[str, dict[str, Any]]] = []
+    for name, entry in agg.items():
+        if is_measured(entry):
+            continue
+        if _undefined_for_this_run(name, entry):
+            undefined.append((name, entry))
+        else:
+            blind.append((name, entry))
+    return blind, undefined
+
+
+#: Reasons that mean a metric is undefined for this run rather than unobserved.
+#:
+#: Matched against the metric's own stated reason, because the reason is the
+#: contract: these strings are produced by :mod:`..protocol.metrics` and carry
+#: into every artifact. A metric reporting one of these is telling the reader
+#: that its inputs were present and the question does not apply. Nothing here is
+#: guessed from a metric name, so a definition change in metrics.py that alters
+#: the wording shows up as a classification change rather than silently holding
+#: a stale opinion.
+_UNDEFINED_REASON_MARKERS = ("is undefined",)
+
+
+def _undefined_for_this_run(name: str, entry: dict[str, Any]) -> bool:
+    """True when no adapter change could give this metric a value.
+
+    The test is deliberately narrow, and narrowed twice.
+
+    It requires the metric's own reason to say the value is undefined rather
+    than unobserved, and it requires the metric to be one whose unavailability
+    is a property of the run rather than of the task set.
+
+    ``recovery_rate`` is the unambiguous case: it is the only registered metric
+    that stays unavailable on a fully-capable adapter with a fully-declared
+    task, because its denominator is an event count and the run contained no
+    events. ``step_efficiency`` and ``task_success`` also go unavailable when
+    the task declares nothing, but the operator can fix those by declaring
+    ``optimal_steps`` or supplying a verdict, so they stay classified as gaps
+    and their remedy stays reachable.
+
+    Returns False for anything else, which is the safe direction: a metric
+    wrongly left in the gap list still gets the adapter advice, while a metric
+    wrongly moved to undefined would lose the advice that could actually fix it.
+    """
+    if name not in _RUN_DEFINED_METRICS:
+        return False
+    reason = entry.get("reason") or ""
+    return any(marker in reason for marker in _UNDEFINED_REASON_MARKERS)
+
+
+#: Metrics whose unavailable status is a fact about the run, not the adapter.
+_RUN_DEFINED_METRICS = frozenset({"recovery_rate"})
+
+
 def detect_measurement_gaps(agg: dict[str, dict]) -> list[dict[str, Any]]:
     """What the adapter cannot see. A finding about the setup, not the harness."""
-    gaps = [(name, entry) for name, entry in agg.items() if not is_measured(entry)]
-    if not gaps:
+    blind, undefined = _unavailable_split(agg)
+    if not blind:
         return []
     return [
         _finding(
             id="adapter:gaps",
             kind="measurement",
             severity=INFO,
-            title=f"{len(gaps)} metric(s) could not be measured through this adapter",
+            title=f"{len(blind)} metric(s) could not be measured through this adapter",
             detail=(
                 "These are gaps in what harness-tuner can see, not defects in the harness. "
                 "They are reported so that no reader mistakes silence for a clean result. "
@@ -278,8 +362,48 @@ def detect_measurement_gaps(agg: dict[str, dict]) -> list[dict[str, Any]]:
             ),
             metric=None,
             direction=None,
-            evidence=[{"metric": name, "reason": entry["reason"]} for name, entry in gaps],
-            measured={"unavailable_metrics": len(gaps), "total_metrics": len(agg)},
+            evidence=[{"metric": name, "reason": entry["reason"]} for name, entry in blind],
+            measured={
+                "unavailable_metrics": len(blind),
+                "total_metrics": len(agg),
+                "undefined_metrics": len(undefined),
+            },
+        )
+    ]
+
+
+def detect_undefined_measurements(agg: dict[str, dict]) -> list[dict[str, Any]]:
+    """Metrics the run could not define, as distinct from what the adapter missed.
+
+    Kept separate from :func:`detect_measurement_gaps` so the two carry different
+    remedies. A gap is a work item; this is not. Mixing them told an operator
+    whose adapter was already complete to go and raise its level for a metric
+    that no level can produce.
+    """
+    blind, undefined = _unavailable_split(agg)
+    if not undefined:
+        return []
+    return [
+        _finding(
+            id="measurement:undefined",
+            kind="undefined_measurement",
+            severity=INFO,
+            title=f"{len(undefined)} metric(s) are undefined for this run, not unobserved",
+            detail=(
+                "Every field these metrics need was supplied, and they still have no value, "
+                "because what they measure did not happen: no error occurred, so there is no "
+                "recovery to rate. This is the definition working. No adapter change will move "
+                "them, and they are counted separately so the number of metrics an adapter "
+                "could actually fix stays honest."
+            ),
+            metric=None,
+            direction=None,
+            evidence=[{"metric": name, "reason": entry["reason"]} for name, entry in undefined],
+            measured={
+                "undefined_metrics": len(undefined),
+                "total_metrics": len(agg),
+                "unavailable_metrics": len(blind),
+            },
         )
     ]
 
@@ -322,6 +446,7 @@ def analyze(
     findings += detect_unrecovered_errors(agg, task_runs)
     findings += detect_budget_blind_spots(run_doc or {})
     findings += detect_measurement_gaps(agg)
+    findings += detect_undefined_measurements(agg)
 
     findings.sort(key=lambda f: (_ORDER[f["severity"]], f["id"]))
     return findings

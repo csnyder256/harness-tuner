@@ -331,6 +331,13 @@ python -m harness_tuner verify --baseline results/<first> --variant results/<sec
 
 Step 4 is the reason the other three are worth doing. Every proposal carries a falsifiable prediction, as a metric and a direction, recorded in the baseline's `manifest.json`. `verify` pairs the two runs task by task and reports one of three outcomes: **confirmed**, **refuted**, or **unproven**.
 
+Two findings need reading carefully, because they sound alike and mean opposite things.
+
+- **`adapter:gaps`** is a work list. The adapter did not supply a field a metric needed, and raising the adapter level closes it. This one is actionable.
+- **`measurement:undefined`** is not. Every field was supplied and the metric still has no value, because what it measures did not happen in the run: nothing failed, so there is no recovery rate to report. No adapter change moves it. To get a value you have to change the task set, not the instrumentation, and a run that never failed is the honest reason a recovery rate is absent.
+
+Keeping those apart matters because the same mistake the protocol forbids in a trace, calling an unobserved value zero, is easy to make one layer up as well: calling an undefined value a gap. An operator whose adapter is already complete should not be sent to go and report data it has already reported.
+
 "Unproven" is a real answer and usually the most common one. It means the evidence has not yet cleared the bar, not that the change failed. Because the test underneath is an anytime-valid e-process, adding trials and running `verify` again is legitimate and does not inflate the error rate. That property is why watching a running comparison is safe here and is not safe with a p-value.
 
 What `verify` reports is an **e-value**, never a p-value. An e-value of 20 means the evidence is worth 20 to 1 against the null. It is a betting statement, and it is the honest one.
