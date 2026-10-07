@@ -9,19 +9,19 @@ Verify it with `sha256sum -c checksums.txt --ignore-missing` (Linux),
 (PowerShell), comparing the result to the checksum file.
 
 ```sh
-uv tool install ./harness_tuner-0.2.3-py3-none-any.whl
+uv tool install ./harness_tuner-0.3.0-py3-none-any.whl
 harness-tuner --help
 harness-tuner conformance
 ```
 
-Alternatively use `pipx install ./harness_tuner-0.2.3-py3-none-any.whl` or a
+Alternatively use `pipx install ./harness_tuner-0.3.0-py3-none-any.whl` or a
 Python virtual environment. Bundled packs and conformance data travel with the
 wheel, so the CLI works from a different current directory.
 
 ## Container
 
 ```sh
-docker run --rm ghcr.io/csnyder256/harness-tuner:0.2.3 --help
+docker run --rm ghcr.io/csnyder256/harness-tuner:0.3.0 --help
 ```
 
 Published images support Linux AMD64 and ARM64. Mount a working directory at
