@@ -26,11 +26,47 @@ import subprocess
 import tempfile
 from typing import Any
 
-from ..protocol import TOKEN_KINDS, TraceError, normalize_trace
+from ..protocol import TOKEN_KINDS, TraceError, digest, normalize_trace
 from .budget import BudgetExceeded, Governor
 from .cassette import Cassette
 
 PLACEHOLDERS = ("task_id", "prompt", "workspace", "out", "seed")
+
+
+def cassette_config_digest(cfg) -> str:
+    """The conditions a recording is only valid under.
+
+    A cassette stores one task's outcome under one configuration, so replaying
+    it under a different one mixes two experiments and reports the first as if
+    it described the second. The key therefore covers the three things that
+    change what a driven task actually does: the model under test, the adapter
+    that produced the record, and the containment answer that governed what the
+    harness could reach.
+
+    Containment belongs here for the same reason the manifest stamps it. A
+    recording made with the filesystem reachable is not a valid outcome for a
+    run configured to reach nothing, so replaying it would attribute actions to
+    a harness that could not have taken them. The previous key named only the
+    adapter and the model, so a containment change replayed the old recording
+    silently -- the exact failure the cassette's own docstring says the key
+    prevents.
+
+    Machine-local paths (workspace, cassette_path) are deliberately excluded.
+    They do not change the task, and including them would stop a recording
+    replaying on a different machine, which is what makes a shared cassette
+    useful in the first place.
+    """
+    return digest(
+        {
+            "adapter": cfg.get("harness.adapter"),
+            "model": cfg.get("models.harness"),
+            "containment": {
+                "mechanism": cfg.get("containment.mechanism"),
+                "reach": cfg.get("containment.reach"),
+                "approved": cfg.get("containment.approved"),
+            },
+        }
+    )
 
 
 def _observed_cost(steps: list[dict[str, Any]]) -> float | None:
@@ -220,7 +256,7 @@ def drive(
     """
     check_containment(cfg)
 
-    config_digest = cfg.get("harness.adapter") + "|" + cfg.get("models.harness")
+    config_digest = cassette_config_digest(cfg)
     records: list[dict[str, Any]] = []
     halt: dict[str, Any] | None = None
 

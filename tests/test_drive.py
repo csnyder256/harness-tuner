@@ -21,6 +21,7 @@ from harness_tuner.run.cassette import Cassette
 from harness_tuner.run.driver import (
     ContainmentError,
     DriveError,
+    cassette_config_digest,
     check_containment,
     drive,
     render_argv,
@@ -320,6 +321,112 @@ def test_cassette_key_changes_when_the_model_changes(harness_script, tmp_path):
     b = Cassette.key("t1", 7, "adapter|model-b")
     assert a != b, "a recording made under a different model is a different experiment"
     assert Cassette.key("t1", 7, "x") == Cassette.key("t1", 7, "x")
+
+
+# ---------------------------------------------------------------------------
+# What the cassette key is a function of. A recording is only valid under the
+# conditions that produced it, and the key is where that promise is kept.
+# ---------------------------------------------------------------------------
+
+
+def _record_one_task(harness_script, tmp_path, cassette_path, **overrides):
+    """Record one driven task into a cassette, under the given config."""
+    cfg = make_config(
+        harness_script, tmp_path, task_cost="0.002",
+        cost={"cassette": True, "budget": {"enabled": False}}, **overrides,
+    )
+    cassette = Cassette(cassette_path)
+    drive(cfg, tasks(1), workspace=str(tmp_path), cassette=cassette,
+          governor=Governor.from_config(cfg), seed=7)
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        {"mechanism": "container", "reach": "one empty temp directory", "approved": True},
+        {"mechanism": "tempdir", "reach": "the whole filesystem", "approved": True},
+    ],
+)
+def test_a_containment_change_stops_a_recording_from_replaying(harness_script, tmp_path, changed):
+    """A containment change is a different experiment, and drive must honour it.
+
+    The key previously named only the adapter and the model, so a recording made
+    with the filesystem reachable replayed unchanged under a run configured to
+    reach nothing, attributing actions to a harness that could not have taken
+    them. Containment is what governs what a driven task can do, so changing it
+    has to invalidate the recording rather than quietly reuse it.
+    """
+    cassette_path = str(tmp_path / "rec.jsonl")
+    _record_one_task(
+        harness_script, tmp_path, cassette_path,
+        containment={"mechanism": "tempdir", "reach": "one empty temp directory", "approved": True},
+    )
+
+    replay_cfg = make_config(
+        harness_script, tmp_path, task_cost="0.002", containment=changed,
+        cost={"cassette": True, "budget": {"enabled": False}},
+    )
+    replay = Cassette(cassette_path)
+    records, _ = drive(replay_cfg, tasks(1), workspace=str(tmp_path), cassette=replay,
+                       governor=Governor.from_config(replay_cfg), seed=7)
+
+    assert replay.hits == 0, "a recording made under different containment must not replay"
+    assert replay.misses == 1
+    assert records[0]["source"] == "driven"
+
+
+def test_the_cassette_key_covers_the_whole_containment_answer(harness_script, tmp_path):
+    """Every part of the answer reaches the key, including approval.
+
+    ``approved`` cannot be driven end to end -- driving refuses when it is false
+    -- so it is checked here against the key function directly.
+    """
+    base = make_config(
+        harness_script, tmp_path,
+        containment={"mechanism": "tempdir", "reach": "one empty temp directory", "approved": True},
+    )
+    variants = [
+        make_config(harness_script, tmp_path, containment={
+            "mechanism": "container", "reach": "one empty temp directory", "approved": True}),
+        make_config(harness_script, tmp_path, containment={
+            "mechanism": "tempdir", "reach": "the whole filesystem", "approved": True}),
+        make_config(harness_script, tmp_path, containment={
+            "mechanism": "tempdir", "reach": "one empty temp directory", "approved": False}),
+    ]
+    digests = {cassette_config_digest(base)} | {cassette_config_digest(v) for v in variants}
+    assert len(digests) == 4, "every part of the containment answer must reach the key"
+    assert Cassette.key("t1", 7, cassette_config_digest(base)) != Cassette.key(
+        "t1", 7, cassette_config_digest(variants[0])
+    )
+
+
+def test_the_cassette_key_covers_the_model_and_the_adapter(harness_script, tmp_path):
+    base = make_config(harness_script, tmp_path)
+    other_model = make_config(harness_script, tmp_path, models={"harness": "a-different-model"})
+    other_adapter = make_config(harness_script, tmp_path, harness={"adapter": "a-different-adapter"})
+
+    assert cassette_config_digest(base) != cassette_config_digest(other_model)
+    assert cassette_config_digest(base) != cassette_config_digest(other_adapter)
+
+
+def test_cassette_key_ignores_machine_local_paths(harness_script, tmp_path):
+    """A shared cassette has to replay on another machine.
+
+    workspace and cassette_path are where the run happens, not what the task is.
+    Folding them into the key would make a recording machine-specific and defeat
+    the point of a cassette you can hand to someone else.
+    """
+    a = make_config(
+        harness_script, tmp_path,
+        harness={"workspace": str(tmp_path / "one")},
+        cost={"cassette": True, "cassette_path": str(tmp_path / "a.jsonl")},
+    )
+    b = make_config(
+        harness_script, tmp_path,
+        harness={"workspace": str(tmp_path / "two")},
+        cost={"cassette": True, "cassette_path": str(tmp_path / "b.jsonl")},
+    )
+    assert cassette_config_digest(a) == cassette_config_digest(b)
 
 
 def test_cassette_survives_a_round_trip(tmp_path):

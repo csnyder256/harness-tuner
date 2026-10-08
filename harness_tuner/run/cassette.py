@@ -11,9 +11,11 @@ therefore the same metrics, byte for byte. That property is what lets the
 conformance suite, CI, and a contributor on a laptop with no API key all
 reproduce a number somebody else measured.
 
-The cache key deliberately includes the config digest. Changing the model, the
-adapter, or the containment answer invalidates the recording, because a
-recording made under different conditions is a different experiment.
+The cache key is a digest of the conditions that change what a driven task
+does: the model under test, the adapter, and the containment answer. Changing
+any of them invalidates the recording, because a recording made under different
+conditions is a different experiment. Machine-local paths are left out of that
+digest so a recording still replays on a different machine.
 """
 
 from __future__ import annotations
