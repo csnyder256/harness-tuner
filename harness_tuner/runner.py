@@ -268,6 +268,15 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="ignore cost.cassette and drive the harness for real, even if a recording exists",
     )
+    parser.add_argument(
+        "--judge-response",
+        default=None,
+        metavar="FILE",
+        help=(
+            "the delegated judge's answer to judge-request.json. Its verdicts are folded "
+            "into task_success; a task left out stays unavailable rather than assumed true."
+        ),
+    )
 
 
 def main(args: argparse.Namespace) -> int:
@@ -277,6 +286,19 @@ def main(args: argparse.Namespace) -> int:
         print(f"configuration ({cfg.source}) has {len(problems)} problem(s):", file=sys.stderr)
         for problem in problems:
             print(f"  {problem}", file=sys.stderr)
+        return 2
+
+    # An explicitly named judge response is a request to fold it in. Silently
+    # treating a mistyped path as "no response supplied" would run the whole
+    # pipeline and leave task_success unavailable while the operator believes
+    # they answered it, so the mistake is caught before anything is spent.
+    if args.judge_response and not os.path.isfile(args.judge_response):
+        print(
+            f"judge response {args.judge_response} is not a file. It is the answer to "
+            "judge-request.json, in the shape that file asks for; without it, omit "
+            "--judge-response and every unjudged task stays unavailable.",
+            file=sys.stderr,
+        )
         return 2
 
     execution = cfg.get("mode.execution")
@@ -322,7 +344,12 @@ def main(args: argparse.Namespace) -> int:
             return 4
 
     rundir = execute(
-        cfg, records, args.out, capabilities_path=args.capabilities, extra_run_fields=extra
+        cfg,
+        records,
+        args.out,
+        capabilities_path=args.capabilities,
+        judge_response_path=args.judge_response,
+        extra_run_fields=extra,
     )
 
     print(f"run written to {rundir.root}")
@@ -339,4 +366,15 @@ def main(args: argparse.Namespace) -> int:
         f"\n{full} metric(s) measured in every task, {partial} in only some of them, "
         f"{gaps} not measurable at all. summary.md lists the last two first."
     )
+
+    with open(rundir.path("run"), "r", encoding="utf-8") as handle:
+        judging = json.load(handle).get("judging") or {}
+    pending = int(judging.get("pending") or 0)
+    if pending and not args.judge_response:
+        request = os.path.join(rundir.root, delegated.REQUEST_FILE)
+        print(
+            f"\n{pending} task(s) have no outcome. Answer {request} using whatever provider "
+            f"you already have, then re-run with --judge-response <file> to fold the verdicts "
+            "into task_success. Until then it reports unavailable rather than assuming a pass."
+        )
     return 0
