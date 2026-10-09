@@ -329,6 +329,14 @@ python -m harness_tuner run intake/ --out results/
 python -m harness_tuner verify --baseline results/<first> --variant results/<second>
 ```
 
+A task whose outcome no pack could settle deterministically is never guessed at. The run writes `judge-request.json` beside its artifacts and says how many verdicts are pending; answer it with whatever provider you already have, then fold the verdicts in:
+
+```bash
+python -m harness_tuner run intake/ --out results/ --judge-response judge-response.json
+```
+
+A task you leave out of the response stays `unavailable` rather than being assumed to have passed, and the aggregate rate is computed over the tasks that were actually judged.
+
 Step 4 is the reason the other three are worth doing. Every proposal carries a falsifiable prediction, as a metric and a direction, recorded in the baseline's `manifest.json`. `verify` pairs the two runs task by task and reports one of three outcomes: **confirmed**, **refuted**, or **unproven**.
 
 "Unproven" is a real answer and usually the most common one. It means the evidence has not yet cleared the bar, not that the change failed. Because the test underneath is an anytime-valid e-process, adding trials and running `verify` again is legitimate and does not inflate the error rate. That property is why watching a running comparison is safe here and is not safe with a p-value.
