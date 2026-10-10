@@ -199,6 +199,87 @@ def test_summary_lists_the_blind_spots_before_the_numbers(rundir):
     assert text.index("could not measure") < text.index("## Measured")
 
 
+def _report_data(rundir) -> dict:
+    """The JSON the interactive table, the exports and the fallback all share."""
+    with open(rundir.path("report"), "r", encoding="utf-8") as handle:
+        html = handle.read()
+    marker = 'id="report-data">'
+    start = html.index(marker) + len(marker)
+    return json.loads(html[start : html.index("</script>", start)])
+
+
+def test_report_explorer_does_not_call_a_measured_metric_unavailable(rundir):
+    """The explorer's Reason column explains why a metric is *unavailable*.
+
+    A measured metric carries ``reason: null`` in its aggregate entry rather
+    than no ``reason`` key at all. Reading it with ``.get("reason", "")``
+    therefore returned ``None``, and both the no-JS table and the interactive
+    renderer turn ``None`` into the word "unavailable". The column then read
+    "unavailable" beside a measured value and full coverage, which is the same
+    unavailable-versus-measured confusion the protocol forbids in a trace, made
+    one layer up in the report. The comparison report already renders an empty
+    reason for a measured metric, so this also keeps the two reports agreeing.
+
+    A measured metric is allowed a reason only when it was measured in *some*
+    tasks: then the reason names the partial coverage. A metric measured in
+    every task has no reason.
+    """
+    data = _report_data(rundir)
+    rows = data["rows"]
+    assert any(row["value"] is not None for row in rows)
+
+    for row in rows:
+        # The defect: a measured metric's reason was None, which renders as the
+        # word "unavailable". Every reason must be a string, empty when there is
+        # genuinely nothing to explain.
+        assert isinstance(row["reason"], str), (
+            f"{row['metric']} carries reason {row['reason']!r}, which the report "
+            "renders as the word 'unavailable'"
+        )
+
+    for row in rows:
+        if row["value"] is None:
+            continue
+        measured_in, total = row["coverage"].split("/")
+        if measured_in == total:
+            assert row["reason"] == "", f"{row['metric']} was fully measured but says {row['reason']!r}"
+        else:
+            assert row["reason"], f"{row['metric']} was partially measured and must name the coverage"
+
+    # The no-JS fallback table is built from the same rows, so a fully measured
+    # metric's Reason cell must be empty there too, not the word "unavailable".
+    with open(rundir.path("report"), "r", encoding="utf-8") as handle:
+        html = handle.read()
+    row_html = html[html.index("<tr><td>step_count</td>"):]
+    row_html = row_html[: row_html.index("</tr>")]
+    assert "unavailable" not in row_html, row_html
+    assert row_html.endswith("<td></td>"), row_html
+
+
+def test_report_explorer_keeps_the_reason_for_an_unavailable_metric(tmp_path):
+    """The fix must not blank the reasons that are the point of the column.
+
+    A metric the adapter could not supply at all is unavailable, and the column
+    has to keep saying why. Only the measured case loses its placeholder.
+    """
+    cfg = Config(
+        {
+            "harness": {"id": "t", "adapter_level": "L0"},
+            "mode": {"subject": "harness", "execution": "observe"},
+            "models": {"harness": "m"},
+            "report": {"min_tasks_for_fingerprint": 1},
+        },
+        source="<test>",
+    )
+    records = collect(os.path.join(FIXTURES, "l0_minimal.json"))
+    rundir = execute(cfg, records, str(tmp_path / "l0"))
+
+    gaps = [row for row in _report_data(rundir)["rows"] if row["value"] is None]
+    assert gaps, "an L0 adapter cannot measure most metrics"
+    for row in gaps:
+        assert row["reason"], f"{row['metric']} is unavailable and must still say why"
+
+
 def test_intake_rejects_a_file_with_no_trace(tmp_path):
     bad = tmp_path / "bad.json"
     bad.write_text(json.dumps({"task_id": "x"}), encoding="utf-8")
