@@ -105,10 +105,17 @@ def run_explorer(run: dict, agg: dict, tasks: list[dict] | None = None) -> str:
     rows = []
     for metric, entry in agg.items():
         coverage = entry.get("coverage") or {}
+        # The reason column exists to explain why a metric is unavailable. A
+        # measured metric carries ``reason: null`` rather than no key at all, so
+        # ``entry.get("reason", "")`` returns that None and the renderer turns a
+        # missing explanation into the word "unavailable" -- printed next to a
+        # measured value and full coverage, which reads as a contradiction. A
+        # blank reason is the honest value for a metric that was measured; the
+        # partial-coverage case keeps its real reason.
         rows.append({
             "metric": metric, "value": entry.get("value") if entry.get("status") == "measured" else None,
             "unit": entry.get("unit", ""), "coverage": f'{coverage.get("measured", "?")}/{coverage.get("total", "?")}',
-            "combiner": coverage.get("combiner", ""), "reason": entry.get("reason", ""),
+            "combiner": coverage.get("combiner", ""), "reason": entry.get("reason") or "",
         })
     # Task IDs and scalar metrics only. Never include traces, task text or config.
     selected_tasks = [{"task_id": t["task_id"], "metrics": t["metrics"]} for t in (tasks or [])]
