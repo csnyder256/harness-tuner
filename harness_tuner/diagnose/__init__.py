@@ -175,6 +175,19 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main(args: argparse.Namespace) -> int:
+    # An explicitly named response is a request to fold it in, so a path that is
+    # not a file is refused before anything is computed. A mistyped path used to
+    # be indistinguishable from "no response supplied", which would run the
+    # whole diagnosis and leave the operator believing the answer was merged.
+    if args.response and not os.path.isfile(args.response):
+        print(
+            f"diagnose failed: --response names {args.response}, which is not a file. It is "
+            f"the diagnostician's answer to {REQUEST_FILE}; omit the flag to use this run's "
+            f"{RESPONSE_FILE} if one is there, or to run with no answer at all.",
+            file=sys.stderr,
+        )
+        return 2
+
     try:
         rundir, run, metrics, manifest = _load_run(args.run)
     except FileNotFoundError as exc:

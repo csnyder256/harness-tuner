@@ -25,6 +25,7 @@ import os
 import sys
 from typing import Any
 
+from . import capabilities
 from . import packs as PK
 from .config import load as load_config
 
@@ -190,13 +191,20 @@ def main(args: argparse.Namespace) -> int:
         )
         return 0
 
-    capabilities = None
-    if args.capabilities and os.path.isfile(args.capabilities):
-        with open(args.capabilities, "r", encoding="utf-8") as handle:
-            capabilities = json.load(handle)
+    # A named record that cannot be read is not the same as none being named.
+    # The first asks for a scan that gates the task set, the second asks for no
+    # gate at all, and quietly continuing with no scan is how a task the harness
+    # cannot run gets scored as a failure it never had the tools to avoid.
+    record: dict[str, Any] | None = None
+    if args.capabilities:
+        try:
+            record = capabilities.load(args.capabilities)
+        except capabilities.CapabilityError as exc:
+            print(f"cannot read the capability record: {exc}", file=sys.stderr)
+            return 2
 
     try:
-        assembled = assemble(cfg, capabilities)
+        assembled = assemble(cfg, record)
     except PK.PackError as exc:
         print(f"cannot assemble a task set: {exc}", file=sys.stderr)
         return 2
@@ -223,6 +231,6 @@ def main(args: argparse.Namespace) -> int:
         for entry in assembled["skipped"]:
             print(f"  {entry['task_id']}  needs {', '.join(entry['unmet'])}")
         print("  Skipped, not failed. They are excluded from every rate computed below.")
-    elif capabilities:
+    elif record:
         print("\nnothing skipped: this harness meets every declared requirement")
     return 0
