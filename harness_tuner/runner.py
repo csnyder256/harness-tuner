@@ -16,6 +16,7 @@ import sys
 from typing import Any
 
 from . import __version__
+from . import capabilities
 from .config import Config, load as load_config
 from .protocol import (
     HTP_VERSION,
@@ -64,24 +65,11 @@ def load_capabilities(path: str | None) -> dict[str, Any]:
     Capability discovery is a job for an agent that reads and understands the
     harness, not for a probe script, so this file is an input rather than
     something the engine derives. When it is missing the artifact says so
-    plainly instead of implying a scan happened.
+    plainly instead of implying a scan happened. The lookup and that explicit
+    record live in :mod:`harness_tuner.capabilities`; a path that was named but
+    cannot be read raises there rather than being folded into "absent".
     """
-    if path and os.path.isfile(path):
-        with open(path, "r", encoding="utf-8") as handle:
-            record = json.load(handle)
-        record.setdefault("source", os.path.abspath(path))
-        return record
-    return {
-        "status": "not_scanned",
-        "reason": (
-            "no capabilities file was supplied. Capability discovery is performed by the "
-            "agent that set harness-tuner up, by reading the harness, and its findings are "
-            "written to a capabilities file. Without it, no benchmark was skipped on "
-            "capability grounds and none was scored as failed on capability grounds either."
-        ),
-        "capabilities": {},
-        "source": None,
-    }
+    return capabilities.load(path)
 
 
 def execute(
@@ -271,6 +259,18 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main(args: argparse.Namespace) -> int:
+    # A path the operator named has to exist and has to parse, and this is
+    # checked before the config is even read. A mistyped --capabilities used to
+    # run the whole pipeline and write a capabilities.json stating that no
+    # capability file was supplied, which is false: a file was named, and the
+    # flag that was meant to gate the task set was ignored in silence. Nothing is
+    # spent on a run whose inputs cannot be read.
+    try:
+        capabilities.load(args.capabilities)
+    except capabilities.CapabilityError as exc:
+        print(f"run failed: {exc}", file=sys.stderr)
+        return 2
+
     cfg = load_config(args.config)
     problems = cfg.validate()
     if problems:

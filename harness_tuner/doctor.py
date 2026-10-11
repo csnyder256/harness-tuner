@@ -18,11 +18,10 @@ reach, and whether the engine will be calling models itself.
 from __future__ import annotations
 
 import argparse
-import json
-import os
 import sys
 from typing import Any
 
+from . import capabilities
 from .config import ADAPTER_LEVELS, load as load_config
 from .protocol import REGISTRY
 from .report.fingerprint import DIMENSIONS
@@ -116,13 +115,21 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     cfg = load_config(args.config)
-    capabilities = None
-    if args.capabilities and os.path.isfile(args.capabilities):
-        with open(args.capabilities, "r", encoding="utf-8") as handle:
-            capabilities = json.load(handle)
+
+    # A named record that does not exist is not the same as none being named.
+    # doctor exists to report what the install cannot measure, and "the
+    # capability scan is absent" is a different statement from "the scan you
+    # named was ignored", which is what used to be printed here.
+    record: dict[str, Any] | None = None
+    if args.capabilities:
+        try:
+            record = capabilities.load(args.capabilities)
+        except capabilities.CapabilityError as exc:
+            print(f"doctor failed: {exc}", file=sys.stderr)
+            return 2
 
     problems = cfg.validate()
-    report = assess(cfg, capabilities)
+    report = assess(cfg, record)
 
     print(f"config: {cfg.source}")
     if problems:
