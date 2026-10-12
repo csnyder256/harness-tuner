@@ -24,6 +24,7 @@ from .protocol import (
     canonical_json,
     compute,
     digest,
+    effective_read_hints,
     envelope,
     partial_coverage,
     trace_digest,
@@ -120,6 +121,13 @@ def execute(
                 "step_count": len(record["steps"]),
                 "trace_digest": trace_digest(record["steps"]),
                 "metrics": metrics,
+                # The hints that decided which of this task's calls the rework
+                # metric counted as reads. Recorded beside the metric because a
+                # finding derived from it has to identify read-shaped calls with
+                # the same predicate; guessing at read-shape from the trace is
+                # how a detector ends up reporting a bound for work that never
+                # happened.
+                "read_tool_hints": list(effective_read_hints(task)),
                 "source": record.get("source"),
             }
         )
@@ -180,7 +188,12 @@ def execute(
         {
             "aggregate": agg,
             "per_task": [
-                {"task_id": t["task_id"], "tags": t["tags"], "metrics": t["metrics"]}
+                {
+                    "task_id": t["task_id"],
+                    "tags": t["tags"],
+                    "metrics": t["metrics"],
+                    "read_tool_hints": t["read_tool_hints"],
+                }
                 for t in task_runs
             ],
         }

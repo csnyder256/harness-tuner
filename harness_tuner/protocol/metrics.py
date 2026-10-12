@@ -44,11 +44,27 @@ def _token_series(steps: Iterable[dict[str, Any]], kind: str) -> list[int]:
     return [s["tokens"][kind] for s in steps if s["tokens"].get(kind) is not None]
 
 
-def _read_hints(task: dict[str, Any]) -> tuple[str, ...]:
+def effective_read_hints(task: dict[str, Any]) -> tuple[str, ...]:
+    """The hint list a task's read-shaped metric is computed with.
+
+    A task that declares hints replaces the default list rather than extending
+    it, so a harness whose read tools are named nothing like the defaults is not
+    silently measured against both. An absent or empty list means the default.
+
+    This is public because the rework finding has to identify read-shaped calls
+    with exactly the predicate the metric used. A detector that guessed at
+    read-shape would attach evidence the metric it reports never counted, and
+    would then report a bound for work the harness never did.
+    """
     hints = task.get("read_tool_hints")
     if not hints:
         return DEFAULT_READ_TOOL_HINTS
     return tuple(str(h).lower() for h in hints)
+
+
+def is_read_shaped(tool: str | None, hints: tuple[str, ...]) -> bool:
+    """Whether a tool name is one of the read-shaped tools in ``hints``."""
+    return bool(tool) and any(hint in tool.lower() for hint in hints)
 
 
 # --------------------------------------------------------------------------
@@ -160,10 +176,8 @@ def rework_ratio(steps, task):
     has already looked at, which is usually the single largest recoverable
     token line in a coding harness.
     """
-    hints = _read_hints(task)
-    named = [
-        s for s in _tool_calls(steps) if s["tool"] and any(h in s["tool"].lower() for h in hints)
-    ]
+    hints = effective_read_hints(task)
+    named = [s for s in _tool_calls(steps) if is_read_shaped(s["tool"], hints)]
     reads = [s for s in named if s["args_digest"] is not None]
     if not reads:
         if named:

@@ -257,6 +257,8 @@ capabilities.json what the setup agent found, or an explicit "not scanned"
 
 Per-task traces also live at `tasks/<task_id>/trace.jsonl`. A record there and the same record in the merged file differ only by the added `x_task_id`.
 
+Each per-task entry in `metrics.json` also records the read-tool hints its `rework_ratio` was computed with. A finding derived from that metric has to identify read-shaped calls with the same predicate, and the hints are the only thing that decides which calls those are, so the run records them rather than leaving the predicate to be guessed at from the trace.
+
 A run that could not produce content for one of the eight still writes it, carrying the reason. A missing file is indistinguishable from a crashed run; a file that says why it is empty is evidence.
 
 The delegated model path may also write `judge-request.json`, `judge-response.json`, `diagnosis-request.json`, `diagnosis-response.json`, `diagnosis.json` and `diagnosis.md`. Those are working files, not artifacts, and they are the complete list of what else may appear.
