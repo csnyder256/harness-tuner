@@ -103,6 +103,62 @@ def test_rework_is_found_without_a_loop():
     assert rework["measured"]["repeated_reads"] == 3
 
 
+def test_a_repeated_call_that_is_not_a_read_is_not_reported_as_a_re_read():
+    """The finding and the metric it reports must be the same predicate.
+
+    ``rework_ratio`` counts read-shaped calls. The evidence used to count
+    repeats of every comparable call, so a harness that wrote the same file
+    twice was told it had re-read it, and the proposal's bound -- "at most N
+    reads were avoidable" -- was arithmetic on a population the metric never
+    measured. A bound is the one number in a proposal that claims to be
+    arithmetic on the observed trace, so it has to be arithmetic on the right
+    trace.
+    """
+    runs = [
+        make_task(
+            "t1",
+            [("write_file", "out.txt"), ("read_file", "a.py"),
+             ("write_file", "out.txt"), ("read_file", "a.py")],
+        )
+    ]
+    found, agg = analyze(runs)
+    rework = next(f for f in found if f["kind"] == "rework")
+
+    assert agg["rework_ratio"]["value"] == 0.5, "two read-shaped calls, one of them repeated"
+    assert rework["measured"]["repeated_reads"] == 1, "one read repeated and one write repeated"
+    assert [e["tool"] for e in rework["evidence"]] == ["read_file"]
+    bound = (P.from_finding(rework, 1) or {}).get("bound")
+    assert bound and "At most 1 read(s) were avoidable" in bound
+
+
+def test_the_rework_finding_uses_the_hints_that_produced_the_metric():
+    """A harness that renames its read tools must not be measured against both.
+
+    Declaring ``read_tool_hints`` replaces the default list rather than
+    extending it, so with hints of ``fetch_document_by_id`` the metric counts
+    that tool and not ``read_file``. A detector that fell back to the defaults
+    here would report re-reads of a tool the metric never counted, which is the
+    same mismatch in the opposite direction.
+    """
+    hints = ["fetch_document_by_id"]
+    steps = normalize_trace(
+        [
+            {"kind": "tool_call", "tool": tool, "args": {"id": "a"},
+             "result_kind": "ok", "started_ms": i * 5, "duration_ms": 5}
+            for i, tool in enumerate(
+                ["fetch_document_by_id", "read_file", "fetch_document_by_id", "read_file"]
+            )
+        ]
+    )
+    metrics = compute(steps, {"read_tool_hints": hints})
+    run = {"task_id": "t1", "tags": [], "metrics": metrics, "steps": steps,
+           "read_tool_hints": hints}
+
+    rework = next(f for f in F.analyze(aggregate([metrics]), [run], {}) if f["kind"] == "rework")
+    assert metrics["rework_ratio"]["value"] == 0.5
+    assert [e["tool"] for e in rework["evidence"]] == ["fetch_document_by_id"]
+
+
 def test_findings_are_deterministic():
     runs = [make_task("t1", [("read_file", "cfg.py")] * 4)]
     first, _ = analyze(runs)
@@ -266,3 +322,58 @@ def test_diagnose_writes_its_files(tmp_path):
 
     with open(rundir.path("manifest"), "r", encoding="utf-8") as fh:
         assert json.load(fh)["predictions"], "predictions must be recorded for verify"
+
+
+def test_a_run_carries_the_hints_its_rework_metric_used_to_diagnose(tmp_path):
+    """The predicate has to survive into the artifacts, or diagnose cannot apply it.
+
+    ``detect_rework`` has to identify read-shaped calls with exactly the
+    predicate ``rework_ratio`` used, and the hints are that predicate. If the
+    run does not record them, diagnose can only fall back to the default list,
+    which for a harness that renamed its read tools describes a different set of
+    calls -- so this drives the whole chain: config in, artifact written,
+    diagnose reads it back.
+    """
+    from harness_tuner.diagnose import DIAGNOSIS_FILE, main
+    import argparse
+
+    cfg = Config(
+        {
+            "harness": {"id": "t", "adapter_level": "L1", "read_tool_hints": ["fetch_document_by_id"]},
+            "mode": {"subject": "harness", "execution": "observe"},
+            "models": {"harness": "m"},
+            "report": {"min_tasks_for_fingerprint": 1, "alpha": 0.05},
+        },
+        source="<test>",
+    )
+    records = [
+        {
+            "task_id": f"t{i}",
+            "tags": [],
+            "task": {},
+            "steps": normalize_trace(
+                [
+                    {"kind": "tool_call", "tool": tool, "args": {"id": "a"},
+                     "result_kind": "ok", "started_ms": j * 5, "duration_ms": 5}
+                    for j, tool in enumerate(
+                        ["fetch_document_by_id", "read_file", "fetch_document_by_id", "read_file"]
+                    )
+                ]
+            ),
+            "source": "test",
+        }
+        for i in range(3)
+    ]
+    rundir = execute(cfg, records, str(tmp_path / "run"))
+
+    with open(rundir.path("metrics"), "r", encoding="utf-8") as fh:
+        per_task = json.load(fh)["per_task"]
+    assert [task["read_tool_hints"] for task in per_task] == [["fetch_document_by_id"]] * 3
+
+    assert main(argparse.Namespace(run=rundir.root, response=None, no_request=True)) == 0
+    with open(os.path.join(rundir.root, DIAGNOSIS_FILE), "r", encoding="utf-8") as fh:
+        findings = json.load(fh)["findings"]
+    rework = next(f for f in findings if f["kind"] == "rework")
+    assert [e["tool"] for e in rework["evidence"]] == ["fetch_document_by_id"], (
+        "diagnose used a different predicate from the one the metric was computed with"
+    )

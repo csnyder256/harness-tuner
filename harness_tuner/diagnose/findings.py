@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..protocol.metrics import is_measured
+from ..protocol.metrics import effective_read_hints, is_measured, is_read_shaped
 
 CRITICAL = "critical"
 HIGH = "high"
@@ -118,17 +118,41 @@ def _consecutive_runs(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [r for r in runs if r["length"] >= 3]
 
 
+def _read_hints(run: dict[str, Any]) -> tuple[str, ...]:
+    """The read-tool hints this task's ``rework_ratio`` was computed with.
+
+    Read from the run's metrics artifact, where each per-task entry records the
+    hints in force for that task. That is the whole point: the finding and the
+    metric it reports have to be the same predicate, and the hints are the only
+    thing that decides which calls the metric counted. A run written before that
+    field existed, or by another implementation, falls back to the default list,
+    which is what the metric itself would have used for a task that declared
+    nothing.
+    """
+    return effective_read_hints({"read_tool_hints": run.get("read_tool_hints")})
+
+
 def detect_rework(task_runs: list[dict[str, Any]], agg: dict[str, dict]) -> list[dict[str, Any]]:
-    """Reading the same thing more than once across a task."""
+    """Reading the same thing more than once across a task.
+
+    Read-shaped calls only, using the hints the ``rework_ratio`` metric was
+    computed with. Counting a repeat of any comparable call here would attach
+    evidence the metric never counted -- a file written twice is not a file read
+    twice -- and the proposal's bound is arithmetic on this list, so it would
+    overstate how much of the run was avoidable.
+    """
     entry = agg.get("rework_ratio")
     if not entry or not is_measured(entry) or entry["value"] <= 0.05:
         return []
 
     repeats: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for run in task_runs:
+        hints = _read_hints(run)
         seen: dict[tuple[str, str], int] = {}
         for step in run.get("steps") or []:
-            if step["kind"] != "tool_call" or not step["tool"] or step["args_digest"] is None:
+            if step["kind"] != "tool_call" or step["args_digest"] is None:
+                continue
+            if not is_read_shaped(step["tool"], hints):
                 continue
             key = (step["tool"], step["args_digest"])
             if key in seen:

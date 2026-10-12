@@ -165,6 +165,27 @@ def test_metrics_json_carries_every_task_and_the_registry(rundir):
     assert doc["aggregate"]["step_count"]["value"] == EXPECTED_STEPS
 
 
+def test_metrics_records_the_hints_that_decided_which_calls_were_reads(rundir):
+    """A run has to be self-describing about the predicate behind rework_ratio.
+
+    ``rework_ratio`` counts read-shaped calls, and which tools count is decided
+    entirely by the read-tool hints. The rework finding has to identify those
+    calls with the same predicate, and it can only do that if the run records
+    the hints that were in force. Without them the finding can only guess, and a
+    harness that renamed its read tools is then measured against the default
+    list instead of its own.
+    """
+    from harness_tuner.protocol.trace import DEFAULT_READ_TOOL_HINTS
+
+    with open(rundir.path("metrics"), "r", encoding="utf-8") as handle:
+        doc = json.load(handle)
+    assert len(doc["per_task"]) == EXPECTED_TASKS
+    for task in doc["per_task"]:
+        assert task["read_tool_hints"] == list(DEFAULT_READ_TOOL_HINTS), (
+            f"{task['task_id']} does not record the hints its rework metric used"
+        )
+
+
 def test_capabilities_says_it_was_not_scanned_when_absent(rundir):
     """Silence about capabilities would imply a scan happened and found nothing."""
     with open(rundir.path("capabilities"), "r", encoding="utf-8") as handle:

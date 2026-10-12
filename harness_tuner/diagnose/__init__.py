@@ -54,7 +54,8 @@ def _task_runs_with_steps(rundir: RunDir, metrics: dict[str, Any]) -> list[dict[
         path = rundir.task_path(task_id, "trace")
         steps = read_trace(path) if os.path.isfile(path) else []
         out.append({"task_id": task_id, "tags": entry.get("tags") or [],
-                    "metrics": entry["metrics"], "steps": steps})
+                    "metrics": entry["metrics"], "steps": steps,
+                    "read_tool_hints": entry.get("read_tool_hints")})
     return out
 
 
