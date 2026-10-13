@@ -42,6 +42,60 @@ def _utc_now() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+class TaskSetError(ValueError):
+    """The task records for a run cannot produce a valid run.
+
+    Raised before any metric is computed or any artifact is written, so a task
+    set that could not be honest about itself never reaches disk.
+    """
+
+
+def refuse_duplicate_task_ids(
+    task_records: list[dict[str, Any]], *, where: str | None = None
+) -> None:
+    """Refuse a task set in which one task id names more than one task.
+
+    The per-task trace lives at ``tasks/<task_id>/trace.jsonl``, so two records
+    sharing an id cannot both be kept. The second write destroys the first, and
+    the run is then internally inconsistent in three ways at once: the per-task
+    trace no longer differs from the merged one by nothing but ``x_task_id``,
+    the run-level metrics still count a task whose trace is gone, and every
+    consumer that pairs tasks by id -- ``verify``, ``compare``, and the
+    diagnosis that re-reads each task's trace -- silently treats two tasks as
+    one. ``compare`` already refuses this, with the reason that duplicate
+    pairing would invent evidence; the same reasoning applies to the run that
+    would hold the duplicates in the first place.
+
+    Refused rather than disambiguated. A run in which one id names two tasks has
+    no correct reading, and inventing a suffix would pair the two runs being
+    compared on a name neither of them ever used.
+    """
+    positions: dict[str, list[int]] = {}
+    for index, record in enumerate(task_records):
+        positions.setdefault(str(record["task_id"]), []).append(index)
+
+    collisions = {task_id: at for task_id, at in positions.items() if len(at) > 1}
+    if not collisions:
+        return
+
+    described = []
+    for task_id, at in sorted(collisions.items()):
+        places = []
+        for index in at:
+            source = task_records[index].get("source")
+            places.append(f"record {index + 1}" + (f" from {source}" if source else ""))
+        described.append(f"{task_id!r} appears {len(at)} times, in " + " and ".join(places))
+
+    raise TaskSetError(
+        (f"{where}: " if where else "")
+        + "task ids must be unique within a run: "
+        + "; ".join(described)
+        + ". The per-task trace is written to tasks/<task_id>/trace.jsonl, so a second task "
+        "with the same id overwrites the first one's trace while the run-level metrics still "
+        "count both. Give every task its own task_id."
+    )
+
+
 def make_run_id(task_records: list[dict[str, Any]], stamp: dict[str, Any]) -> str:
     """A run id that is stable for the same inputs within the same second.
 
@@ -94,6 +148,7 @@ def execute(
     extra_run_fields: dict[str, Any] | None = None,
 ) -> RunDir:
     """Compute every artifact for one run and write all eight files."""
+    refuse_duplicate_task_ids(task_records)
     stamp = build_stamp(cfg)
     hints = cfg.get("harness.read_tool_hints")
 
@@ -235,7 +290,13 @@ def execute(
 
 
 def load_task_set(path: str) -> list[dict[str, Any]]:
-    """Read a drive-mode task set: a JSON list, or an object with a 'tasks' key."""
+    """Read a drive-mode task set: a JSON list, or an object with a 'tasks' key.
+
+    Duplicate task ids are refused here rather than later, because this is the
+    last point before the harness is invoked. A collision that only surfaced
+    when the artifacts were written would have been discovered after every task
+    had already been driven and paid for.
+    """
     with open(path, "r", encoding="utf-8") as handle:
         raw = json.load(handle)
     tasks = raw.get("tasks") if isinstance(raw, dict) else raw
@@ -244,6 +305,7 @@ def load_task_set(path: str) -> list[dict[str, Any]]:
     for i, task in enumerate(tasks):
         if not isinstance(task, dict) or "task_id" not in task:
             raise ValueError(f"{path}: task {i} has no task_id")
+    refuse_duplicate_task_ids(tasks, where=path)
     return tasks
 
 
@@ -283,13 +345,21 @@ def main(args: argparse.Namespace) -> int:
     extra: dict[str, Any] = {}
 
     if execution == "observe":
-        records = collect(args.source)
+        try:
+            records = collect(args.source)
+        except (OSError, ValueError) as exc:
+            print(f"run failed: {exc}", file=sys.stderr)
+            return 2
     else:
         from .run.budget import Governor
         from .run.cassette import Cassette
         from .run.driver import DriveError, drive
 
-        tasks = load_task_set(args.source)
+        try:
+            tasks = load_task_set(args.source)
+        except (OSError, ValueError) as exc:
+            print(f"run failed: {exc}", file=sys.stderr)
+            return 2
         governor = Governor.from_config(cfg)
         cassette = None
         if cfg.get("cost.cassette") and not args.no_cassette:
@@ -321,9 +391,13 @@ def main(args: argparse.Namespace) -> int:
             print("no task produced a trace, so there is nothing to measure", file=sys.stderr)
             return 4
 
-    rundir = execute(
-        cfg, records, args.out, capabilities_path=args.capabilities, extra_run_fields=extra
-    )
+    try:
+        rundir = execute(
+            cfg, records, args.out, capabilities_path=args.capabilities, extra_run_fields=extra
+        )
+    except TaskSetError as exc:
+        print(f"run failed: {exc}", file=sys.stderr)
+        return 2
 
     print(f"run written to {rundir.root}")
     for name in sorted(os.listdir(rundir.root)):
