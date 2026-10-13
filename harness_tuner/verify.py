@@ -51,8 +51,26 @@ def _load(run_root: str) -> tuple[dict[str, Any], dict[str, Any]]:
     return metrics, manifest
 
 
-def _by_task(metrics_doc: dict[str, Any]) -> dict[str, dict[str, dict]]:
-    return {entry["task_id"]: entry["metrics"] for entry in metrics_doc["per_task"]}
+def _by_task(metrics_doc: dict[str, Any], *, where: str) -> dict[str, dict[str, dict]]:
+    """The per-task metrics, keyed by task id.
+
+    A run writes one trace per task id, at ``tasks/<task_id>/trace.jsonl``, so a
+    second record carrying the same id cannot be a second task. Collapsing the
+    two here would pair two tasks as one and report a difference computed from
+    half the evidence, which is the failure ``compare`` already refuses for the
+    same reason.
+    """
+    out: dict[str, dict[str, dict]] = {}
+    for entry in metrics_doc["per_task"]:
+        task_id = entry["task_id"]
+        if task_id in out:
+            raise VerifyError(
+                f"{where} lists task id {task_id!r} more than once. A run holds one trace "
+                "per task id, so a repeated id cannot be a second task, and pairing it "
+                "would count two tasks as one and invent evidence for both."
+            )
+        out[task_id] = entry["metrics"]
+    return out
 
 
 def compare_metric(
@@ -147,8 +165,8 @@ def run_verify(
     if alpha is None:
         alpha = float(base_manifest.get("alpha") or 0.05)
 
-    base_by_task = _by_task(base_metrics)
-    var_by_task = _by_task(var_metrics)
+    base_by_task = _by_task(base_metrics, where=baseline_root)
+    var_by_task = _by_task(var_metrics, where=variant_root)
 
     shared = set(base_by_task) & set(var_by_task)
     if not shared:

@@ -286,6 +286,8 @@ This is what you write. It is deliberately small.
 
 Only `trace` is required. Everything else improves what can be measured.
 
+**Each `task_id` must be unique within a run.** A run holds one trace per task id, at `tasks/<task_id>/trace.jsonl`, so two tasks sharing an id cannot both be kept: the second overwrites the first, and the run's own per-task trace then disagrees with the merged one it is supposed to differ from by nothing but `x_task_id`. A run whose ids collide is refused rather than disambiguated, because a run in which one id names two tasks has no correct reading, and renaming one of them would pair a later comparison on a name neither run ever used.
+
 Then:
 
 ```bash
