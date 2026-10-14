@@ -27,6 +27,7 @@ import tempfile
 from typing import Any
 
 from ..protocol import TOKEN_KINDS, TraceError, normalize_trace
+from ..protocol.artifacts import TaskIdError, check_task_ids
 from .budget import BudgetExceeded, Governor
 from .cassette import Cassette
 
@@ -223,6 +224,14 @@ def drive(
     config_digest = cfg.get("harness.adapter") + "|" + cfg.get("models.harness")
     records: list[dict[str, Any]] = []
     halt: dict[str, Any] | None = None
+
+    # A task id names a directory inside the run, so the whole set is refused
+    # before the first task is invoked. Discovering it when the artifacts are
+    # written would mean driving -- and paying for -- every task first.
+    try:
+        check_task_ids(str(task["task_id"]) for task in tasks)
+    except TaskIdError as exc:
+        raise DriveError(f"refusing this task set: {exc}") from exc
 
     for task in tasks:
         task_id = str(task["task_id"])

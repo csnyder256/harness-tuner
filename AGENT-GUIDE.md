@@ -261,6 +261,8 @@ A run that could not produce content for one of the eight still writes it, carry
 
 The delegated model path may also write `judge-request.json`, `judge-response.json`, `diagnosis-request.json`, `diagnosis-response.json`, `diagnosis.json` and `diagnosis.md`. Those are working files, not artifacts, and they are the complete list of what else may appear.
 
+A `task_id` is used as a directory name inside the run, so it is a relative path that has to stay inside `tasks/`. A namespaced id such as `generated/locate-the-caller` is fine. An id containing a `..` segment, or starting with a path separator, is refused rather than written, because the per-task trace would otherwise land outside the run directory the report describes. That is the one thing the artifact list above promises.
+
 ---
 
 # PART 3. The adapter contract

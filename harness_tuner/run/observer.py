@@ -15,6 +15,12 @@ Nothing above is required except ``trace``. A harness that can only tell you
 which tools ran, in what order, still produces a usable file, and the report
 says exactly which metrics that costs.
 
+A ``task_id`` becomes a directory name inside the run, at
+``tasks/<task_id>/trace.jsonl``, so an id that would resolve outside ``tasks/``
+is refused here, naming the file it came from, rather than written somewhere the
+run does not describe. See
+:func:`harness_tuner.protocol.artifacts.check_task_id`.
+
 Observe mode never invokes anything. It is the only mode available for a
 harness with no scriptable entry point, and it is the right default for
 measuring real usage rather than synthetic tasks.
@@ -27,6 +33,7 @@ import os
 from typing import Any
 
 from ..protocol import TraceError, normalize_trace
+from ..protocol.artifacts import TaskIdError, check_task_id
 
 
 class IntakeError(ValueError):
@@ -49,6 +56,13 @@ def _read_one(path: str) -> dict[str, Any]:
         )
 
     task_id = raw.get("task_id") or raw.get("name") or os.path.splitext(os.path.basename(path))[0]
+    # The id becomes a directory name inside the run, so it is refused here,
+    # before anything is measured or written, rather than when the run tries to
+    # write a per-task trace to a path that leaves the run behind.
+    try:
+        task_id = check_task_id(str(task_id))
+    except TaskIdError as exc:
+        raise IntakeError(f"{path}: {exc}") from exc
     tags = raw.get("tags") or []
     if not isinstance(tags, list):
         raise IntakeError(f"{path}: 'tags' must be a list")
