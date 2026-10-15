@@ -272,6 +272,7 @@ This is what you write. It is deliberately small.
 ```json
 {
   "task_id": "summarize-q3-report",
+  "prompt": "Summarize the Q3 report in one paragraph.",
   "tags": ["coding"],
   "task": {"optimal_steps": 4, "success": true},
   "trace": [
@@ -302,6 +303,8 @@ The files in `conformance/fixtures/` are valid intake files. Read them; they are
 [harness]
 invoke = ["my-harness", "--headless", "--task", "{prompt}", "--trace-out", "{out}"]
 ```
+
+**Give each task its `prompt`.** A driven run takes it from the task set it was run from; an observe-mode adapter writes it into the intake file, at the top level or inside `task`. It is what the delegated judge is shown when it decides whether the task was accomplished, and no trace records it, because a trace says what the harness did and never what it was told to do. Leave it out and `judge-request.json` carries a null prompt, so the judge can only score the outcome against the trace.
 
 Three things to get right, in order of how often they go wrong:
 

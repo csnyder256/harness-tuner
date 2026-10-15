@@ -33,7 +33,12 @@ def needs_verdict(task_records: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def build_request(cfg, task_records: list[dict[str, Any]]) -> dict[str, Any]:
-    """The judging request. Names the model the user chose for this job."""
+    """The judging request. Names the model the user chose for this job.
+
+    Each task carries its ``prompt``, because the judge is asked whether the
+    harness accomplished what the prompt asked and no trace records that: a
+    trace says what the harness did, never what it was told to do.
+    """
     pending = needs_verdict(task_records)
     return {
         "instructions": (
