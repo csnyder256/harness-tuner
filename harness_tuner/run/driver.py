@@ -194,9 +194,28 @@ def drive_one(
         shutil.rmtree(scratch, ignore_errors=True)
 
 
+#: Task fields the engine carries from the task set into the record's task
+#: object, which is the shape the metric functions and the delegated judge
+#: request read.
+#:
+#: ``prompt`` belongs in this list because the judge request names it. The judge
+#: is asked whether the harness accomplished what the prompt asked, and the
+#: prompt is the one field it cannot recover from the trace: the trace records
+#: what the harness did, never what it was told to do. The engine already holds
+#: it here, having just substituted it into the harness argv, so leaving it out
+#: made ``judge-request.json`` carry ``"prompt": null`` for every driven task.
+CARRIED_TASK_FIELDS = ("prompt", "optimal_steps", "success", "read_tool_hints")
+
+
 def _task_meta(task: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
+    """The record's task object: what the harness reported, plus what it could not.
+
+    Anything the harness put in its own intake ``task`` block wins, since the
+    harness is the only party that knows its outcomes. Everything else comes
+    from the task set the run was driven from.
+    """
     meta = dict(extra)
-    for key in ("optimal_steps", "success", "read_tool_hints"):
+    for key in CARRIED_TASK_FIELDS:
         if key in task and key not in meta:
             meta[key] = task[key]
     return meta
