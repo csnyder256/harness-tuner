@@ -96,6 +96,37 @@ def test_measured_zero_is_not_unavailable():
     assert metrics_for("l0_minimal")["cache_hit_ratio"]["status"] == M.UNAVAILABLE
 
 
+def test_cache_read_without_input_is_unknown_not_perfect():
+    """The mirror of interleaved_loops, and the more dangerous direction.
+
+    cache_hit_ratio is cache_read / (cache_read + input). When the adapter
+    reports cache_read and never input, the denominator was never observed and
+    the share computes as 1.0, a perfect cache bought with a measurement nobody
+    took. An unobserved input side is not zero fresh tokens, so the share is
+    unknown and has to say so.
+    """
+    entry = metrics_for("cache_input_unreported")["cache_hit_ratio"]
+    assert entry["status"] == M.UNAVAILABLE
+    assert entry["value"] is None, "an unobserved denominator must not produce a ratio"
+    assert "input was not" in entry["reason"]
+
+    # The rest of the fixture, worked out by hand from the trace:
+    # cache_read 4000+6000+2000, output 120+140+160, cost 0.012+0.018+0.006.
+    m = metrics_for("cache_input_unreported")
+    assert m["tokens_cache_read"]["value"] == 12000
+    assert m["tokens_output"]["value"] == 420
+    assert m["cost_usd"]["value"] == 0.036
+    assert m["tokens_input"]["status"] == M.UNAVAILABLE
+    # least squares over (1, 4100), (2, 6200), (3, 6300): numerator 2200,
+    # denominator 2, slope 1100.
+    assert m["context_growth_per_step"]["value"] == 1100.0
+    # the last step starts at 1240 and runs 660ms
+    assert m["wall_ms"]["value"] == 1900
+
+    # Both sides were reported for l1_full, so there the ratio is real arithmetic.
+    assert value("l1_full", "cache_hit_ratio") == 0.586957
+
+
 def test_recovery_over_zero_errors_is_undefined_not_perfect():
     assert "no error occurred" in reason("l1_full", "recovery_rate")
 

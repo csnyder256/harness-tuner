@@ -1,0 +1,149 @@
+{
+  "metrics": {
+    "autonomy_ratio": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 1.0
+    },
+    "cache_hit_ratio": {
+      "reason": "cache_read tokens were reported but input was not, so the cache share is unknown",
+      "status": "unavailable",
+      "unit": "ratio",
+      "value": null
+    },
+    "context_growth_per_step": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tokens/step",
+      "value": 1100.0
+    },
+    "context_peak": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tokens",
+      "value": 6300
+    },
+    "cost_usd": {
+      "reason": null,
+      "status": "measured",
+      "unit": "usd",
+      "value": 0.036
+    },
+    "distinct_tools": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tools",
+      "value": 0
+    },
+    "error_count": {
+      "reason": null,
+      "status": "measured",
+      "unit": "steps",
+      "value": 0
+    },
+    "error_rate": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ratio",
+      "value": 0.0
+    },
+    "human_input_steps": {
+      "reason": null,
+      "status": "measured",
+      "unit": "steps",
+      "value": 0
+    },
+    "loop_max_run": {
+      "reason": "no comparable tool calls in the trace",
+      "status": "unavailable",
+      "unit": "calls",
+      "value": null
+    },
+    "recovery_rate": {
+      "reason": "no error occurred, so a recovery rate is undefined",
+      "status": "unavailable",
+      "unit": "ratio",
+      "value": null
+    },
+    "redundant_call_count": {
+      "reason": "the trace contains no tool calls",
+      "status": "unavailable",
+      "unit": "calls",
+      "value": null
+    },
+    "redundant_call_ratio": {
+      "reason": "the trace contains no tool calls",
+      "status": "unavailable",
+      "unit": "ratio",
+      "value": null
+    },
+    "rework_ratio": {
+      "reason": "no read-shaped tool call was identified; set read_tool_hints for this harness",
+      "status": "unavailable",
+      "unit": "ratio",
+      "value": null
+    },
+    "step_count": {
+      "reason": null,
+      "status": "measured",
+      "unit": "steps",
+      "value": 3
+    },
+    "step_efficiency": {
+      "reason": "this task declares no optimal_steps, so efficiency has no reference point",
+      "status": "unavailable",
+      "unit": "ratio",
+      "value": null
+    },
+    "task_success": {
+      "reason": "no deterministic check and no judge verdict was supplied for this task",
+      "status": "unavailable",
+      "unit": "bool",
+      "value": null
+    },
+    "time_to_first_action_ms": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ms",
+      "value": 0
+    },
+    "tokens_cache_read": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tokens",
+      "value": 12000
+    },
+    "tokens_cache_write": {
+      "reason": "no step reported cache write tokens; this adapter is below level L1",
+      "status": "unavailable",
+      "unit": "tokens",
+      "value": null
+    },
+    "tokens_input": {
+      "reason": "no step reported input tokens; this adapter is below level L1",
+      "status": "unavailable",
+      "unit": "tokens",
+      "value": null
+    },
+    "tokens_output": {
+      "reason": null,
+      "status": "measured",
+      "unit": "tokens",
+      "value": 420
+    },
+    "tool_call_count": {
+      "reason": null,
+      "status": "measured",
+      "unit": "calls",
+      "value": 0
+    },
+    "wall_ms": {
+      "reason": null,
+      "status": "measured",
+      "unit": "ms",
+      "value": 1900
+    }
+  },
+  "name": "cache_input_unreported"
+}

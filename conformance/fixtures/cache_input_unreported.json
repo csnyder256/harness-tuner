@@ -1,0 +1,16 @@
+{
+  "name": "cache_input_unreported",
+  "description": "An adapter that reports cache_read on every call and never reports input. The cache hit ratio is cache_read / (cache_read + input), and half of that expression was never observed, so the share is unknown and cache_hit_ratio must report unavailable. It must not report 1.0: an unobserved input side is not zero fresh tokens, and treating it as zero makes the ratio come out at a perfect 1.0, which would let an adapter that cannot see fresh input at all outscore one that reports both honestly. This is the mirror of interleaved_loops, which reports input without cache_read; absence on either side leaves the share unknown.",
+  "task": {},
+  "trace": [
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 0, "duration_ms": 600,
+     "tokens": {"cache_read": 4000, "output": 120},
+     "cost_usd": 0.012, "model": "reference-model", "context_tokens": 4100},
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 600, "duration_ms": 640,
+     "tokens": {"cache_read": 6000, "output": 140},
+     "cost_usd": 0.018, "model": "reference-model", "context_tokens": 6200},
+    {"kind": "model_call", "result_kind": "ok", "started_ms": 1240, "duration_ms": 660,
+     "tokens": {"cache_read": 2000, "output": 160},
+     "cost_usd": 0.006, "model": "reference-model", "context_tokens": 6300}
+  ]
+}

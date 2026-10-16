@@ -223,6 +223,13 @@ def cache_hit_ratio(steps, task):
     Low values on a harness that re-sends a stable preamble every turn are the
     cheapest large saving available, which is why this is reported separately
     from raw cost.
+
+    Both sides of the ratio have to have been reported. ``cache_read`` without
+    ``input`` is the same gap as ``input`` without ``cache_read``, and it is the
+    more dangerous of the two, because the missing denominator makes the share
+    come out at 1.0: a harness whose adapter cannot see fresh input at all would
+    score a perfect cache, outscoring one that reports both honestly. Absence is
+    not zero here either, so the share is unknown and says so.
     """
     cached = _token_series(steps, "cache_read")
     fresh = _token_series(steps, "input")
@@ -231,6 +238,11 @@ def cache_hit_ratio(steps, task):
     if not cached:
         return unavailable(
             "input tokens were reported but cache_read was not, so the cache share is unknown",
+            "ratio",
+        )
+    if not fresh:
+        return unavailable(
+            "cache_read tokens were reported but input was not, so the cache share is unknown",
             "ratio",
         )
     total = sum(cached) + sum(fresh)
