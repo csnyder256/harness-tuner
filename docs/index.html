@@ -198,7 +198,7 @@ uvx --from git+https://github.com/csnyder256/harness-tuner harness-tuner doctor<
     <dd>Yes, and no harness is named in the code. The adapter your agent writes is the only harness-specific part, and its whole job is to emit one JSON file per task. If a harness leaves any record of what it did, down to a plain text log, it can be measured, and the report says exactly what that costs you in metrics.</dd>
 
     <dt>What if my harness exposes almost nothing?</dt>
-    <dd>Then roughly a third of the metrics report unavailable with a reason each, and <code>doctor</code> tells you before you run anything. Loop detection, step counts and tool-sequence analysis all still work, and those are frequently where the largest recoverable waste is.</dd>
+    <dd>Then most of the metrics report unavailable with a reason each, and <code>doctor</code> lists exactly what the level costs before you run anything. Step counts and tool-sequence analysis work at every level. Loop and rework detection need <code>args_digest</code>, a digest of each call's arguments, which a record of tool names and nothing else cannot supply.</dd>
 
     <dt>Do I have to run real, expensive tasks every time?</dt>
     <dd>No. Record a driven run once and every later run replays from the cassette, free and byte-deterministically. That is what makes results reproducible by a colleague with no API key, and what makes this practical in CI.</dd>

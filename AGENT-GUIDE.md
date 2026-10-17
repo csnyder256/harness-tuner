@@ -79,9 +79,9 @@ First, report what you found reading their harness. Then:
 >
 > | Level | What the harness exposes | What it buys |
 > |---|---|---|
-> | **L0** | Any after-the-fact record, down to plain text logs | Loop detection, step counts, tool sequences. Tokens and cost report unavailable. |
+> | **L0** | Any after-the-fact record, down to plain text logs | Step counts and tool sequences. Tokens, cost and outcomes report unavailable, and so do loop and rework detection unless the adapter can supply `args_digest`, a digest of each call's arguments. |
 > | **L1** | Full step records with tokens, timings and outcomes | Every operational metric, the fingerprint, diagnosis |
-> | **L2** | L1 plus a scriptable entry point | Repeated seeded trials, the e-process, `verify` |
+> | **L2** | L1 plus a scriptable entry point | Repeated seeded trials, so `verify` pairs the identical seeded task set |
 > | **L3** | L2 plus programmatic config | Before-and-after comparison of a proposed change |
 >
 > Sets `harness.adapter_level`. Be honest here. An L0 harness declared L1 does not gain metrics, it gains empty ones.
@@ -89,7 +89,7 @@ First, report what you found reading their harness. Then:
 > **ASK 3. Drive, observe, or both?**
 >
 > - **Observe.** harness-tuner invokes nothing. Your adapter reads traces from work they were doing anyway. Costs nothing extra, measures real usage, and has no blast radius. Available at every level.
-> - **Drive.** harness-tuner invokes the harness against a fixed task set. Needs L2. This is what `verify` and the e-process require.
+> - **Drive.** harness-tuner invokes the harness against a fixed task set. Needs L2. This is what makes the second run of a `verify` pair reliable: the same seeded tasks before and after, rather than whatever the harness happened to be asked to do.
 > - **Both.**
 >
 > Recommendation: **observe first**, always, even when driving is available. It is free, it is safe, and a week of real traces usually reveals more than a synthetic task set does. Add driving once they want to prove a change helped. Sets `mode.execution`.

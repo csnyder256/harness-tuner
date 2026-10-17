@@ -161,7 +161,7 @@ The evaluation space is busy, and almost all of it sits one layer down from this
 
 **Does this work with Claude Code, Codex CLI, OpenHands, Cursor, Aider, or my in-house runner?** Yes, and none of them are named in the code. The adapter your agent writes is the only harness-specific part, and its whole job is to emit one JSON file per task. If a harness leaves any record of what it did, down to a plain text log, it can be measured, and the report says exactly what that costs you in metrics.
 
-**What if my harness exposes almost nothing?** Then you get an L0 adapter, and roughly a third of the metrics report unavailable with a reason each. That is a useful result rather than a failure, and `doctor` will tell you before you run anything. Loop detection, step counts and tool-sequence analysis all still work, and those are frequently where the largest recoverable waste is.
+**What if my harness exposes almost nothing?** Then you get an L0 adapter, and most of the metrics report unavailable with a reason each. That is a useful result rather than a failure, and `doctor` lists exactly what the level costs before you run anything. Step counts and tool-sequence analysis work at every level. Loop and rework detection need `args_digest`, a digest of each call's arguments, which a record of tool names and nothing else cannot supply.
 
 **Do I have to run real, expensive tasks every time?** No. Record a driven run once and every later run replays from the cassette, free and byte-deterministically. That is what makes results reproducible by a colleague with no API key, and what makes this practical in CI.
 
