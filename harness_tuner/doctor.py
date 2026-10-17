@@ -12,7 +12,8 @@ about that run looks wrong. The exit code is zero.
 
 So doctor reports the gaps first and by name: what the adapter level costs you,
 which ceilings are inert, which fingerprint dimensions the task set cannot
-reach, and whether the engine will be calling models itself.
+reach, whether the engine will be calling models itself, and what `verify`
+needs from a run rather than from the adapter level.
 """
 
 from __future__ import annotations
@@ -46,6 +47,58 @@ LEVEL_COSTS: dict[str, tuple[str, tuple[str, ...]]] = {
     "L3": ("L2 plus programmatic config, so a proposed change can be A/B compared.", ()),
 }
 
+#: Metrics that need the *arguments* of a call, not merely its name.
+#:
+#: A record showing which tools ran and in what order cannot tell two calls to
+#: the same tool apart, and every metric below is a statement about repeats: the
+#: longest unbroken run of one action, the share of read-shaped calls that
+#: re-read something already read, the count of calls repeating an action
+#: already taken. Identity is (tool, arguments), so with the arguments
+#: unobserved all four report unavailable. The shipped L0 fixture reports
+#: exactly that, and it is the reason loop detection cannot be promised to a
+#: record that carries tool names and nothing else.
+#:
+#: This is a second list rather than four more rows in :data:`LEVEL_COSTS`
+#: because it is a property of the *record*, not of the level. An adapter that
+#: can digest its own log closes all four by supplying ``args_digest``, without
+#: storing a single argument, so "L0 cannot detect loops" would be wrong in the
+#: other direction. Keeping them apart is what makes that visible.
+ARGUMENT_DEPENDENT: tuple[str, ...] = (
+    "redundant_call_count",
+    "redundant_call_ratio",
+    "loop_max_run",
+    "rework_ratio",
+)
+
+ARGUMENT_REASON = (
+    "an L0 record names the tool but not what it was called with, so two calls to the same "
+    "tool cannot be told apart. Supply args_digest, a digest of the arguments, from the "
+    "adapter's own record to close this without storing any argument."
+)
+
+
+def _verify_note(level: str) -> str:
+    """What the pairing step needs at this level.
+
+    ``verify`` compares two completed runs task by task and re-runs nothing, so
+    no adapter level gates the command, and saying otherwise told an L0 or L1
+    operator that the project's whole propose-then-prove loop was closed to
+    them. What drive mode buys is the second run of the pair.
+    """
+    if level in ("L0", "L1"):
+        return (
+            "verify compares two completed runs task by task and re-runs nothing itself, so "
+            "it works at every level: point it at a run from before the change and a run "
+            "from after it, over the same task ids. What this level cannot do is produce "
+            "that second run for you. Drive mode re-runs the identical seeded task set, "
+            "which needs L2."
+        )
+    return (
+        "verify compares two completed runs task by task. This level can drive, so the "
+        "second run can be the identical seeded task set rather than whatever the harness "
+        "happened to be asked to do."
+    )
+
 
 def assess(cfg, capabilities: dict[str, Any] | None = None) -> dict[str, Any]:
     level = cfg.get("harness.adapter_level")
@@ -60,16 +113,8 @@ def assess(cfg, capabilities: dict[str, Any] | None = None) -> dict[str, Any]:
                     "reason": "an L0 adapter reports no tokens, timings or outcomes",
                 }
             )
-    if level in ("L0", "L1"):
-        blocked.append(
-            {
-                "metric": "verify (the whole command)",
-                "reason": (
-                    f"verify re-runs an identical task set, which needs drive mode, which needs "
-                    f"L2 or above. This adapter is {level}."
-                ),
-            }
-        )
+        for metric in ARGUMENT_DEPENDENT:
+            blocked.append({"metric": metric, "reason": ARGUMENT_REASON})
 
     ceilings: list[str] = []
     if cfg.get("cost.budget.enabled"):
@@ -97,6 +142,7 @@ def assess(cfg, capabilities: dict[str, Any] | None = None) -> dict[str, Any]:
         "inert_ceilings": ceilings,
         "capabilities_scanned": scanned,
         "model_calls": direct.describe(cfg),
+        "verify": _verify_note(level),
         "fingerprint_dimensions_needing_specific_tasks": {
             "memory": "needs at least one task tagged 'memory'",
             "safety": "needs at least one task tagged 'safety'",
@@ -141,6 +187,9 @@ def main(args: argparse.Namespace) -> int:
         print("  nothing on adapter-level grounds")
     for entry in report["blocked"]:
         print(f"  {entry['metric']}: {entry['reason']}")
+
+    print("\nProving a change helped:")
+    print(f"  {report['verify']}")
 
     print("\nCeilings that cannot fire:")
     if not report["inert_ceilings"]:
